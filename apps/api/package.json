@@ -1,0 +1,21 @@
+{
+  "name": "@veraz/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "replay": "bun scripts/replay.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@veraz/shared": "workspace:*",
+    "hono": "^4.13.0",
+    "openai": "^7.43.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.0"
+  }
+}

@@ -3,10 +3,10 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev:api": "bun --cwd apps/api run dev",
-    "dev:mobile": "bun --cwd apps/mobile run start",
-    "replay": "bun --cwd apps/api run replay",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:mobile": "bun run --cwd apps/mobile start",
+    "replay": "bun run --cwd apps/api replay",
     "test": "bun test",
-    "typecheck": "bun --cwd apps/api run typecheck && bun --cwd apps/mobile run typecheck"
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/mobile typecheck"
   }
 }
