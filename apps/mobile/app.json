@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "scheme": "veraz",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
@@ -18,6 +19,11 @@
     },
     "android": {
       "package": "app.veraz.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#9fe870"
+      },
       "permissions": ["RECORD_AUDIO"],
       "usesCleartextTraffic": true
     },
@@ -28,7 +34,8 @@
         "expo-audio",
         { "microphonePermission": "Veraz listens to the conversation to transcribe it and fact-check claims in real time." }
       ],
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-font"
     ]
   }
 }

@@ -1,19 +1,20 @@
 import { memo, useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { VERDICT_INFO, type Verdict } from "@veraz/shared";
+import { colors, continuous, radius, type } from "../theme";
 
 export const verdictLabel = (v: Verdict, lang: string) => (lang === "en" ? VERDICT_INFO[v].en : VERDICT_INFO[v].pt);
 
 export const VerdictBadge = memo(function VerdictBadge({ verdict, lang }: { verdict: Verdict; lang: string }) {
   return (
     <View style={[styles.badge, { backgroundColor: VERDICT_INFO[verdict].color }]}>
-      <Text style={styles.text}>{verdictLabel(verdict, lang)}</Text>
+      <Text style={[styles.text, { color: colors.onDark }]}>{verdictLabel(verdict, lang)}</Text>
     </View>
   );
 });
 
 /** "checking…" placeholder: a pulsing pill. */
-export const CheckingBadge = memo(function CheckingBadge({ color }: { color: string }) {
+export const CheckingBadge = memo(function CheckingBadge() {
   const opacity = useRef(new Animated.Value(0.35)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -26,13 +27,13 @@ export const CheckingBadge = memo(function CheckingBadge({ color }: { color: str
     return () => loop.stop();
   }, [opacity]);
   return (
-    <Animated.View style={[styles.badge, { backgroundColor: color, opacity }]}>
-      <Text style={styles.text}>verificando…</Text>
+    <Animated.View style={[styles.badge, { backgroundColor: colors.surfaceElevated, opacity }]}>
+      <Text style={[styles.text, { color: colors.body }]}>verificando…</Text>
     </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, alignSelf: "flex-start" },
-  text: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  badge: { ...continuous, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, alignSelf: "flex-start" },
+  text: { ...type.captionUpper, fontSize: 11, lineHeight: 15, letterSpacing: 1 },
 });

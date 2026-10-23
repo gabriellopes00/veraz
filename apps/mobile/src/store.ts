@@ -14,9 +14,11 @@ interface State {
   filter: Filter;
   connection: Connection;
   recording: boolean;
+  /** A conversation is under way: set by the first recording, cleared by "Limpar". Pausing keeps it. */
+  live: boolean;
   error: string | null;
   apply(e: ServerEvent): void;
-  set(p: Partial<Pick<State, "filter" | "connection" | "recording" | "error">>): void;
+  set(p: Partial<Pick<State, "filter" | "connection" | "recording" | "live" | "error">>): void;
   reset(): void;
 }
 
@@ -27,6 +29,7 @@ export const useStore = create<State>((set) => ({
   filter: "ALL",
   connection: "idle",
   recording: false,
+  live: false,
   set: (p) => set(p),
   reset: () => set(empty),
   apply: (e) =>
@@ -44,7 +47,8 @@ export const useStore = create<State>((set) => ({
         case "partial":
           return { partial: e.text };
         case "utterance":
-          return { utterances: [...s.utterances, e.utterance].slice(-30), partial: "" };
+          // Enough for the transcript to scroll back through a long conversation.
+          return { utterances: [...s.utterances, e.utterance].slice(-300), partial: "" };
         case "claim": {
           const isNew = !s.claims[e.claim.id];
           return {

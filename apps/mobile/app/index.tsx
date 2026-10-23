@@ -1,56 +1,201 @@
-import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ScrollViewInstance,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { FlashList } from "@shopify/flash-list";
 import { useShallow } from "zustand/react/shallow";
 import { useAudioTransport } from "../src/audio";
 import { ClaimCard } from "../src/components/ClaimCard";
+import { EmptyClaims } from "../src/components/EmptyClaims";
+import { Favorites } from "../src/components/Favorites";
 import { FilterChips } from "../src/components/FilterChips";
+import { Logo } from "../src/components/Logo";
+import { ActionButton, Surface } from "../src/components/Glass";
+import { dockInset, RecordDock } from "../src/components/RecordDock";
 import { AUDIO_MODE } from "../src/config";
 import { endSession, sendText, start } from "../src/live";
 import { matchesFilter, useStore } from "../src/store";
-import { useTheme } from "../src/theme";
+import { colors, font, IOS, radius, space, type } from "../src/theme";
 
 const renderItem = ({ item }: { item: string }) => <ClaimCard id={item} />;
 const keyExtractor = (id: string) => id;
 
-function Transcript() {
-  const t = useTheme();
-  const lines = useStore(useShallow((s) => s.utterances.slice(-3).map((u) => u.text)));
-  const partial = useStore((s) => s.partial);
+/** How close to the top still counts as "at the top" for following new claims. */
+const FOLLOW_THRESHOLD = 24;
+const LINE_H = 25;
+const LINES = 4;
+
+/** The canvas melting into whatever scrolls beneath it, so content slides away instead of being cut. */
+function TopFade({ height }: { height: number }) {
   return (
-    <View style={[styles.transcript, { backgroundColor: t.card, borderColor: t.border }]}>
-      {lines.length === 0 && !partial && <Text style={{ color: t.sub }}>A transcrição aparece aqui…</Text>}
-      {lines.map((l, i) => (
-        <Text key={i} style={{ color: t.text }} numberOfLines={2}>{l}</Text>
-      ))}
-      {!!partial && <Text style={{ color: t.sub, fontStyle: "italic" }} numberOfLines={2}>{partial}</Text>}
-    </View>
+    <Svg style={[styles.fade, { height }]} pointerEvents="none">
+      <Defs>
+        <LinearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={colors.canvas} stopOpacity="1" />
+          <Stop offset="1" stopColor={colors.canvas} stopOpacity="0" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#top)" />
+    </Svg>
   );
 }
 
-function ClaimList() {
-  const t = useTheme();
+/**
+ * Teleprompter transcript: what was said before dims and scrolls up under a fade, the sentence being spoken
+ * stays bright at the bottom. Scroll up to read back; it follows the speech again once back at the bottom.
+ * Tapping it opens a field to type a claim instead of speaking. During a conversation it keeps its place even before
+ * anyone speaks; outside one it takes no space until there is something to show.
+ */
+function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boolean) => void }) {
+  const lines = useStore(useShallow((s) => s.utterances.map((u) => u.text)));
+  const partial = useStore((s) => s.partial);
+  const live = useStore((s) => s.live);
+  const recording = useStore((s) => s.recording);
+  const [text, setText] = useState("");
+  const scroller = useRef<ScrollViewInstance>(null);
+  const following = useRef(true);
+
+  // Judged only when the user's own scroll comes to rest, so the follow animation never turns following off.
+  const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    following.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - FOLLOW_THRESHOLD;
+  };
+
+  const submit = () => {
+    const v = text.trim();
+    if (!v) return;
+    setText("");
+    sendText(v).catch((e) => useStore.getState().set({ error: String(e) }));
+  };
+
+  // The live partial is the current sentence; between sentences it is the last one finished.
+  const current = partial || lines.at(-1) || "";
+  const earlier = (partial ? lines : lines.slice(0, -1)).join(" ");
+  if (!current && !typing && !live) return null;
+
+  return (
+    <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
+      <Pressable onPress={() => setTyping(true)} disabled={typing} style={({ pressed }) => [styles.transcript, pressed && styles.pressed]}>
+        {!current && live && (
+          <View style={styles.window}>
+            <Text style={styles.waiting}>{recording ? "Ouvindo…" : "Gravação pausada"}</Text>
+          </View>
+        )}
+        {!!current && (
+          <View style={styles.window}>
+            <ScrollView
+              ref={scroller}
+              // Short text sits at the bottom, where the newest words appear.
+              contentContainerStyle={styles.scrollBody}
+              onContentSizeChange={() => following.current && scroller.current?.scrollToEnd({ animated: true })}
+              onScrollEndDrag={settle}
+              onMomentumScrollEnd={settle}
+              indicatorStyle="white"
+            >
+              <Text style={styles.earlier}>
+                {earlier && `${earlier} `}
+                <Text style={styles.current}>{current}</Text>
+              </Text>
+            </ScrollView>
+            <TopFade height={LINE_H} />
+          </View>
+        )}
+        {typing && (
+          <TextInput
+            autoFocus
+            value={text}
+            onChangeText={setText}
+            onSubmitEditing={submit}
+            submitBehavior="submit"
+            // Closes again once dismissed, unless a draft is left in it.
+            onBlur={() => !text.trim() && setTyping(false)}
+            placeholder="Digite uma afirmação para testar"
+            placeholderTextColor={colors.muted}
+            selectionColor={colors.primary}
+            cursorColor={colors.primary}
+            keyboardAppearance="dark"
+            returnKeyType="send"
+            style={styles.input}
+          />
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/**
+ * Stays put above the list; only the claims scroll, sliding under the filters. Favourites are for browsing, so a
+ * conversation puts them away until "Limpar" ends it.
+ */
+function ClaimsHeader() {
+  const live = useStore((s) => s.live);
+  return (
+    <>
+      {!live && (
+        <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
+          <Favorites />
+        </Animated.View>
+      )}
+      <Animated.View layout={LinearTransition.springify().duration(450).dampingRatio(0.9)}>
+        <Text style={styles.section}>Afirmações</Text>
+        <FilterChips />
+      </Animated.View>
+    </>
+  );
+}
+
+/**
+ * Newest claim first. At the top, the list follows: new claims land in view and push the older ones down. Scrolled
+ * into the list, it holds still (FlashList keeps the first visible card anchored) until the user is back at the top.
+ */
+function ClaimList({ bottomInset, onType }: { bottomInset: number; onType: () => void }) {
   // Only the list of visible ids is selected; shallow equality skips re-renders when it did not change.
   const ids = useStore(useShallow((s) => s.order.filter((id) => matchesFilter(s.claims[id], s.filter))));
+  const live = useStore((s) => s.live);
+  const [following, setFollowing] = useState(true);
+  // Re-renders only when crossing the threshold; the same boolean bails out of the update.
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => setFollowing(e.nativeEvent.contentOffset.y <= FOLLOW_THRESHOLD),
+    [],
+  );
+  // Anchoring is what would push a new claim above the viewport, so it is only on while away from the top.
+  const anchor = useMemo(() => ({ disabled: following }), [following]);
   return (
     <FlashList
       data={ids}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
-      ListEmptyComponent={<Text style={[styles.empty, { color: t.sub }]}>Nenhuma afirmação ainda. Fale ou digite abaixo.</Text>}
+      maintainVisibleContentPosition={anchor}
+      onScroll={onScroll}
+      scrollEventThrottle={32}
+      ListEmptyComponent={<EmptyClaims live={live} onType={onType} />}
+      // The record dock floats over the list, so the last card can scroll clear of it.
+      contentContainerStyle={{ paddingBottom: bottomInset }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     />
   );
 }
 
 export default function Live() {
-  const t = useTheme();
   const transport = useAudioTransport();
   const recording = useStore((s) => s.recording);
   const connection = useStore((s) => s.connection);
   const error = useStore((s) => s.error);
-  const [text, setText] = useState("");
+  const live = useStore((s) => s.live);
+  const hasClaims = useStore((s) => s.order.length > 0);
+  const [typing, setTyping] = useState(false);
 
   const toggle = useCallback(async () => {
     const { set } = useStore.getState();
@@ -61,69 +206,79 @@ export default function Live() {
       } else {
         await start(); // session + socket first, so no audio is lost
         await transport.start();
-        set({ recording: true, error: null });
+        set({ recording: true, live: true, error: null });
       }
     } catch (e) {
       set({ recording: false, error: e instanceof Error ? e.message : String(e) });
     }
   }, [transport]);
 
-  const submit = () => {
-    const v = text.trim();
-    if (!v) return;
-    setText("");
-    sendText(v).catch((e) => useStore.getState().set({ error: String(e) }));
+  const clear = () => {
+    void transport.stop();
+    useStore.getState().set({ recording: false, live: false });
+    setTyping(false);
+    void endSession();
   };
 
-  const dot = connection === "open" ? "#16a34a" : connection === "idle" ? t.sub : "#d97706";
+  const dot = connection === "open" ? colors.success : connection === "idle" ? colors.muted : colors.warning;
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: t.bg }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: t.text }]}>Veraz</Text>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.header}>
+        <Logo size={IOS ? 30 : 28} />
+        <Surface style={styles.status}>
           <View style={[styles.dot, { backgroundColor: dot }]} />
-          <Text style={{ color: t.sub, flex: 1 }}>{recording ? "ouvindo" : connection === "idle" ? "parado" : connection}</Text>
-          <Pressable onPress={() => { void transport.stop(); useStore.getState().set({ recording: false }); void endSession(); }}>
-            <Text style={{ color: t.accent, fontWeight: "600" }}>Limpar</Text>
-          </Pressable>
-        </View>
-        <Transcript />
-        {!!error && <Text style={{ color: t.danger, paddingHorizontal: 16 }}>{error}</Text>}
-        <FilterChips />
-        <View style={styles.flex}>
-          <ClaimList />
-        </View>
-        <View style={styles.footer}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            onSubmitEditing={submit}
-            placeholder="Digite uma afirmação para testar"
-            placeholderTextColor={t.sub}
-            returnKeyType="send"
-            style={[styles.input, { color: t.text, backgroundColor: t.card, borderColor: t.border }]}
-          />
-          <Pressable onPress={toggle} style={[styles.rec, { backgroundColor: recording ? t.danger : t.accent }]}>
-            <Text style={styles.recText}>{recording ? "■ Parar" : "● Gravar"}</Text>
-          </Pressable>
-        </View>
-        {AUDIO_MODE === "chunked" && <Text style={[styles.mode, { color: t.sub }]}>modo chunked (Expo Go)</Text>}
-      </KeyboardAvoidingView>
+          <Text style={styles.statusText}>{recording ? "ouvindo" : connection === "idle" ? "parado" : connection}</Text>
+        </Surface>
+        <View style={styles.flex} />
+        {/* Only when there is something to clear; a conversation paused before any fact still needs a way out. */}
+        {(hasClaims || (live && !recording)) && (
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <ActionButton label="Limpar" icon="arrow.counterclockwise" tone="secondary" size="mini" onPress={clear} />
+          </Animated.View>
+        )}
+      </View>
+      <Transcript typing={typing} setTyping={setTyping} />
+      {!!error && <Text style={styles.error}>{error}</Text>}
+      <ClaimsHeader />
+      <Animated.View style={styles.flex} layout={LinearTransition.springify().duration(450).dampingRatio(0.9)}>
+        <ClaimList bottomInset={dockInset(recording)} onType={() => setTyping(true)} />
+        <TopFade height={space.md} />
+        <RecordDock recording={recording} onToggle={toggle} />
+      </Animated.View>
+      {AUDIO_MODE === "chunked" && <Text style={styles.mode}>modo chunked (Expo Go)</Text>}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 6 },
-  title: { fontSize: 26, fontWeight: "800" },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  transcript: { margin: 12, padding: 12, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, minHeight: 74, gap: 2 },
-  empty: { textAlign: "center", marginTop: 40 },
-  footer: { flexDirection: "row", gap: 8, padding: 12, alignItems: "center" },
-  input: { flex: 1, height: 46, borderRadius: 23, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, fontSize: 15 },
-  rec: { height: 46, paddingHorizontal: 18, borderRadius: 23, justifyContent: "center" },
-  recText: { color: "#fff", fontWeight: "700" },
-  mode: { textAlign: "center", fontSize: 11, paddingBottom: 4 },
+  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: space.md, paddingTop: 6 },
+  status: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { ...type.caption, color: colors.body },
+  transcript: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },
+  pressed: { opacity: 0.7 },
+  window: { height: LINE_H * LINES, justifyContent: "flex-end", overflow: "hidden" },
+  scrollBody: { flexGrow: 1, justifyContent: "flex-end", paddingTop: LINE_H / 2 },
+  fade: { position: "absolute", top: 0, left: 0, right: 0 },
+  earlier: { ...type.bodyMd, fontSize: 18, lineHeight: LINE_H, color: colors.muted },
+  waiting: { ...type.bodyMd, fontSize: 18, lineHeight: LINE_H, color: colors.mutedSoft },
+  current: { ...font("600"), color: colors.onDark },
+  input: {
+    ...type.bodyMd,
+    color: colors.onDark,
+    height: IOS ? 44 : 40,
+    marginTop: space.xs,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: IOS ? radius.pill : radius.md,
+    // design.md's focused text-input; the field only exists while focused.
+    ...(IOS ? null : { borderWidth: 1, borderColor: colors.primary }),
+  },
+  error: { ...type.bodySm, color: colors.danger, paddingHorizontal: space.md, paddingTop: space.xs },
+  section: { ...type.titleLg, color: colors.onDark, paddingHorizontal: space.md, marginTop: space.lg },
+  mode: { ...type.caption, fontSize: 11, color: colors.muted, textAlign: "center", paddingBottom: 4 },
 });

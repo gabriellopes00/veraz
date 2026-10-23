@@ -1,49 +1,134 @@
-import { memo } from "react";
+import { memo, useEffect, useRef, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
+import type { Claim } from "@veraz/shared";
+import { toggleFavorite, useIsFavorite } from "../favorites";
 import { useStore } from "../store";
-import { useTheme } from "../theme";
+import { card, colors, continuous, space, type } from "../theme";
+import { RecheckIcon, StarIcon, TrashIcon } from "./Icons";
 import { CheckingBadge, VerdictBadge } from "./VerdictBadge";
 
-/** Subscribes to its own claim only, so a single update re-renders a single card. */
+const ACTION_W = 68;
+
+/** Only one row stays open at a time, as in Mail, WhatsApp and Telegram. */
+let openRow: SwipeableMethods | null = null;
+
+function Action({ label, bg, onPress, children }: { label: string; bg: string; onPress: () => void; children: ReactNode }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.actionPressed]} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={[styles.circle, { backgroundColor: bg }]}>{children}</View>
+      <Text style={styles.actionLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Revealed behind the card as it slides left; the buttons grow in with the swipe. */
+function Actions({ claim, progress, row }: { claim: Claim; progress: SharedValue<number>; row: SwipeableMethods }) {
+  const favorite = useIsFavorite(claim.id);
+  const settled = claim.status === "verified" || claim.status === "error";
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.2, 0.8], [0, 1], "clamp"),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
+  }));
+
+  return (
+    <Animated.View style={[styles.actions, style]}>
+      {settled && (
+        // MOCK: will ask the API to check the claim again; for now it only closes the row.
+        <Action label="Revisar" bg={colors.surfaceElevated} onPress={() => row.close()}>
+          <RecheckIcon color={colors.onDark} />
+        </Action>
+      )}
+      {claim.status === "verified" && (
+        <Action
+          label={favorite ? "Remover" : "Favoritar"}
+          bg={colors.primary}
+          onPress={() => {
+            toggleFavorite(claim);
+            row.close();
+          }}
+        >
+          <StarIcon color={colors.onPrimary} filled={!favorite} />
+        </Action>
+      )}
+      <Action label="Excluir" bg={colors.danger} onPress={() => useStore.getState().apply({ type: "claim.removed", id: claim.id })}>
+        <TrashIcon color={colors.onDark} />
+      </Action>
+    </Animated.View>
+  );
+}
+
+/** Subscribes to its own claim only, so a single update re-renders a single card. Swipe left for its actions. */
 export const ClaimCard = memo(function ClaimCard({ id }: { id: string }) {
   const claim = useStore((s) => s.claims[id]);
-  const t = useTheme();
+  const favorite = useIsFavorite(id);
+  const row = useRef<SwipeableMethods>(null);
+  // FlashList recycles cells: a row reused for another claim must not arrive swiped open.
+  useEffect(() => () => row.current?.reset(), [id]);
   if (!claim) return null;
   const sources = claim.result?.sources.length ?? 0;
 
   return (
-    <Pressable
-      onPress={() => router.push(`/claim/${id}`)}
-      style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]}
+    <ReanimatedSwipeable
+      ref={row}
+      friction={1.6}
+      rightThreshold={ACTION_W}
+      overshootRight={false}
+      onSwipeableWillOpen={() => {
+        if (openRow && openRow !== row.current) openRow.close();
+        openRow = row.current;
+      }}
+      renderRightActions={(progress, _drag, methods) => <Actions claim={claim} progress={progress} row={methods} />}
     >
-      <Text style={[styles.quote, { color: t.text }]} numberOfLines={3}>
-        “{claim.quote}”
-      </Text>
-      <View style={styles.row}>
-        {claim.status === "verified" && claim.result ? (
-          <VerdictBadge verdict={claim.result.verdict} lang={claim.language} />
-        ) : claim.status === "error" ? (
-          <Text style={{ color: t.danger, fontWeight: "600" }}>Erro na verificação</Text>
-        ) : (
-          <CheckingBadge color={t.sub} />
+      <Pressable
+        onPress={() => router.push(`/claim/${id}`)}
+        style={({ pressed }) => [card, styles.card, pressed && styles.pressed]}
+      >
+        <Text style={styles.quote} numberOfLines={3}>
+          “{claim.quote}”
+        </Text>
+        <View style={styles.row}>
+          {claim.status === "verified" && claim.result ? (
+            <VerdictBadge verdict={claim.result.verdict} lang={claim.language} />
+          ) : claim.status === "error" ? (
+            <Text style={styles.error}>Erro na verificação</Text>
+          ) : (
+            <CheckingBadge />
+          )}
+          <View style={styles.metaRow}>
+            {favorite && <StarIcon size={14} color={colors.primary} filled />}
+            <Text style={styles.meta}>
+              {claim.status === "verified" ? `${sources} ${sources === 1 ? "fonte" : "fontes"}` : claim.category}
+              {claim.cached ? " · cache" : ""}
+            </Text>
+          </View>
+        </View>
+        {claim.result && (
+          <Text style={styles.summary} numberOfLines={2}>
+            {claim.result.summary}
+          </Text>
         )}
-        <Text style={{ color: t.sub, fontSize: 12 }}>
-          {claim.status === "verified" ? `${sources} ${sources === 1 ? "fonte" : "fontes"}` : claim.category}
-          {claim.cached ? " · cache" : ""}
-        </Text>
-      </View>
-      {claim.result && (
-        <Text style={{ color: t.sub, fontSize: 13 }} numberOfLines={2}>
-          {claim.result.summary}
-        </Text>
-      )}
-    </Pressable>
+      </Pressable>
+    </ReanimatedSwipeable>
   );
 });
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 12, marginVertical: 5, padding: 14, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 8 },
-  quote: { fontSize: 15, fontWeight: "500", lineHeight: 21 },
+  card: { marginHorizontal: space.md, marginVertical: 6, padding: space.md, gap: 10 },
+  pressed: { backgroundColor: colors.surfaceElevated },
+  quote: { ...type.titleSm, color: colors.onDark },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  error: { ...type.caption, color: colors.danger },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  meta: { ...type.caption, color: colors.muted },
+  summary: { ...type.bodySm, color: colors.body },
+  actions: { flexDirection: "row", alignItems: "center", paddingRight: space.sm },
+  action: { width: ACTION_W, alignItems: "center", gap: 6 },
+  actionPressed: { opacity: 0.7 },
+  circle: { ...continuous, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
+  actionLabel: { ...type.caption, fontSize: 12, color: colors.body },
 });
