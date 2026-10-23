@@ -1,0 +1,12 @@
+{
+  "name": "veraz",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "bun --cwd apps/api run dev",
+    "dev:mobile": "bun --cwd apps/mobile run start",
+    "replay": "bun --cwd apps/api run replay",
+    "test": "bun test",
+    "typecheck": "bun --cwd apps/api run typecheck && bun --cwd apps/mobile run typecheck"
+  }
+}
