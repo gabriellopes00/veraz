@@ -1,7 +1,7 @@
-import type { Claim, ServerEvent, Utterance } from "@veraz/shared";
+import { resamplePcm16, type Claim, type ServerEvent, type Utterance } from "@veraz/shared";
 import type { AI, Transcriber } from "./ai";
 import type { VerdictCache } from "./cache";
-import { cosine, resamplePcm16 } from "./audio";
+import { cosine } from "./audio";
 import { config } from "./config";
 import { metrics } from "./metrics";
 

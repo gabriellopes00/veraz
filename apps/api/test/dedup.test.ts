@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { cosine, resamplePcm16 } from "../src/audio";
+import { resamplePcm16 } from "@veraz/shared";
+import { cosine } from "../src/audio";
 import { VerdictCache } from "../src/cache";
 import { createMockAI } from "../src/mock";
 

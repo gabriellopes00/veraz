@@ -1,0 +1,32 @@
+{
+  "name": "@veraz/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "start:dev-client": "expo start --dev-client",
+    "ios": "expo run:ios --device",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@shopify/flash-list": "2.3.2",
+    "@veraz/shared": "workspace:*",
+    "expo": "^58.0.17",
+    "expo-audio": "~58.0.10",
+    "expo-constants": "~58.0.13",
+    "expo-dev-client": "~58.0.14",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.25",
+    "expo-status-bar": "~58.0.4",
+    "expo-web-browser": "~58.0.6",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

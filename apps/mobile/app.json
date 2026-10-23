@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Veraz",
+    "slug": "veraz",
+    "version": "1.0.0",
+    "scheme": "veraz",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.veraz.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Veraz listens to the conversation to transcribe it and fact-check claims in real time.",
+        "NSAppTransportSecurity": { "NSAllowsLocalNetworking": true, "NSAllowsArbitraryLoads": true },
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "app.veraz.mobile",
+      "permissions": ["RECORD_AUDIO"],
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-audio",
+        { "microphonePermission": "Veraz listens to the conversation to transcribe it and fact-check claims in real time." }
+      ],
+      "expo-dev-client"
+    ]
+  }
+}
