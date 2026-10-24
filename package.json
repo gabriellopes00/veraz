@@ -1,12 +1,16 @@
 {
   "name": "veraz",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "dev:api": "bun run --cwd apps/api dev",
-    "dev:mobile": "bun run --cwd apps/mobile start",
-    "replay": "bun run --cwd apps/api replay",
-    "test": "bun test",
-    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/mobile typecheck"
+    "dev:api": "pnpm --filter @veraz/api dev",
+    "dev:mobile": "pnpm --filter @veraz/mobile start",
+    "replay": "pnpm --filter @veraz/api replay",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
   }
 }

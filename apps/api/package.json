@@ -6,6 +6,7 @@
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
     "replay": "bun scripts/replay.ts",
+    "test": "bun test",
     "typecheck": "tsc -p ."
   },
   "dependencies": {

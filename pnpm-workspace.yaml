@@ -1,0 +1,6 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Expo/Metro default for pnpm; isolated installs still break some React Native libraries.
+nodeLinker: hoisted
