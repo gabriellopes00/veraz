@@ -32,7 +32,9 @@
       "expo-web-browser",
       [
         "expo-audio",
-        { "microphonePermission": "Veraz listens to the conversation to transcribe it and fact-check claims in real time." }
+        {
+          "microphonePermission": "Veraz listens to the conversation to transcribe it and fact-check claims in real time."
+        }
       ],
       "expo-dev-client",
       "expo-font"

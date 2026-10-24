@@ -1,4 +1,4 @@
-import { Button, HStack, Host, Image, Text } from "@expo/ui/swift-ui";
+import { Button, Host, HStack, Image, Text } from "@expo/ui/swift-ui";
 import { buttonStyle, controlSize, font, foregroundStyle, tint } from "@expo/ui/swift-ui/modifiers";
 import { GlassContainer, GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from "expo-glass-effect";
 import { colors } from "../theme";
@@ -11,8 +11,11 @@ const GLASS = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 export function Surface({ tint, interactive, visible, ...props }: SurfaceProps) {
   if (!GLASS) return <Flat.Surface tint={tint} visible={visible} {...props} />;
   // Fading a parent's opacity breaks the glass while it animates, so the effect itself animates instead.
-  const effect = visible === undefined ? "regular" : { style: visible ? ("regular" as const) : ("none" as const), animate: true };
-  return <GlassView glassEffectStyle={effect} colorScheme="dark" tintColor={tint} isInteractive={interactive} {...props} />;
+  const effect =
+    visible === undefined ? "regular" : { style: visible ? ("regular" as const) : ("none" as const), animate: true };
+  return (
+    <GlassView glassEffectStyle={effect} colorScheme="dark" tintColor={tint} isInteractive={interactive} {...props} />
+  );
 }
 
 export function SurfaceGroup({ spacing, ...props }: SurfaceGroupProps) {

@@ -1,4 +1,4 @@
-import { clientMessageSchema, serverEventSchema, type CreateSession } from "@veraz/shared";
+import { type CreateSession, clientMessageSchema, serverEventSchema } from "@veraz/shared";
 import { API_URL, AUDIO_MODE, WS_URL } from "./config";
 import { useStore } from "./store";
 
@@ -76,7 +76,12 @@ export async function sendText(text: string) {
   const msg = clientMessageSchema.parse({ type: "text", text });
   await start();
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
-  else await fetch(`${API_URL}/sessions/${sessionId}/text`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+  else
+    await fetch(`${API_URL}/sessions/${sessionId}/text`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
 }
 
 /** Ends the session on the server and clears local state. */

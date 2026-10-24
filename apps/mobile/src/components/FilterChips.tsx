@@ -1,15 +1,19 @@
+import { VERDICT_INFO, VERDICTS } from "@veraz/shared";
 import { memo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useShallow } from "zustand/react/shallow";
-import { VERDICTS, VERDICT_INFO } from "@veraz/shared";
-import { useStore, type Filter } from "../store";
+import { type Filter, useStore } from "../store";
 import { colors, IOS, radius, type } from "../theme";
 import { Surface, SurfaceGroup } from "./Glass";
 
 // iOS: green-tinted glass marks the active chip. Android: design.md category tabs (surface vs transparent).
-const ACTIVE = IOS ? { tint: colors.primary, text: colors.onPrimary, count: colors.onPrimary } : { tint: colors.surfaceElevated, text: colors.onDark, count: colors.body };
-const IDLE = IOS ? { tint: undefined, text: colors.bodyStrong, count: colors.muted } : { tint: "transparent", text: colors.muted, count: colors.mutedSoft };
+const ACTIVE = IOS
+  ? { tint: colors.primary, text: colors.onPrimary, count: colors.onPrimary }
+  : { tint: colors.surfaceElevated, text: colors.onDark, count: colors.body };
+const IDLE = IOS
+  ? { tint: undefined, text: colors.bodyStrong, count: colors.muted }
+  : { tint: "transparent", text: colors.muted, count: colors.mutedSoft };
 
 export const FilterChips = memo(function FilterChips() {
   const filter = useStore((s) => s.filter);

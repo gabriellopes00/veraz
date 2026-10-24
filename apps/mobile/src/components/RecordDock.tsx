@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Animated, { interpolate, useAnimatedProps, useAnimatedStyle, useFrameCallback, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, {
+  interpolate,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useFrameCallback,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { onLevel } from "../audio";
 import { colors, IOS, radius, space, type } from "../theme";
@@ -175,7 +182,15 @@ const styles = StyleSheet.create({
   dock: { position: "absolute", left: 0, right: 0, bottom: space.xs, alignItems: "center" },
   box: { justifyContent: "flex-end", alignItems: "center", paddingBottom: PAD },
   shell: { ...StyleSheet.absoluteFill, borderRadius: IOS ? 34 : radius.lg },
-  content: { position: "absolute", top: PAD, left: PAD, right: PAD, alignItems: "center", gap: space.sm, overflow: "hidden" },
+  content: {
+    position: "absolute",
+    top: PAD,
+    left: PAD,
+    right: PAD,
+    alignItems: "center",
+    gap: space.sm,
+    overflow: "hidden",
+  },
   time: { ...type.titleSm, height: TIME_H, color: colors.onDark, fontVariant: ["tabular-nums"] },
   playhead: { position: "absolute", top: 0, width: 2, height: WAVE_H, borderRadius: 1, backgroundColor: colors.danger },
 });

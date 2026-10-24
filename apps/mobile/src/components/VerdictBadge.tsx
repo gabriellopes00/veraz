@@ -1,6 +1,6 @@
+import { VERDICT_INFO, type Verdict } from "@veraz/shared";
 import { memo, useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import { VERDICT_INFO, type Verdict } from "@veraz/shared";
 import { colors, continuous, radius, type } from "../theme";
 
 export const verdictLabel = (v: Verdict, lang: string) => (lang === "en" ? VERDICT_INFO[v].en : VERDICT_INFO[v].pt);
@@ -34,6 +34,12 @@ export const CheckingBadge = memo(function CheckingBadge() {
 });
 
 const styles = StyleSheet.create({
-  badge: { ...continuous, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, alignSelf: "flex-start" },
+  badge: {
+    ...continuous,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    alignSelf: "flex-start",
+  },
   text: { ...type.captionUpper, fontSize: 11, lineHeight: 15, letterSpacing: 1 },
 });

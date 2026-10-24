@@ -1,10 +1,10 @@
-import { useRef } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { type Claim, type Source, VERDICT_INFO } from "@veraz/shared";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { VERDICT_INFO, type Claim, type Source } from "@veraz/shared";
+import { useRef } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StarIcon } from "../../src/components/Icons";
-import { VerdictBadge, CheckingBadge } from "../../src/components/VerdictBadge";
+import { CheckingBadge, VerdictBadge } from "../../src/components/VerdictBadge";
 import { toggleFavorite, useFavorite, useIsFavorite } from "../../src/favorites";
 import { useStore } from "../../src/store";
 import { card, colors, space, type } from "../../src/theme";
@@ -24,7 +24,9 @@ function SourceRow({ s, first }: { s: Source; first: boolean }) {
     >
       <Text style={[styles.stance, { color: st.color }]}>{st.icon}</Text>
       <View style={styles.flex}>
-        <Text style={styles.sourceTitle} numberOfLines={2}>{s.title}</Text>
+        <Text style={styles.sourceTitle} numberOfLines={2}>
+          {s.title}
+        </Text>
         <Text style={styles.meta}>
           {s.outlet}
           {s.published_at ? ` · ${s.published_at}` : ""} · {st.pt}
@@ -66,14 +68,18 @@ export default function ClaimDetail() {
   return (
     // "automatic" insets the content below the transparent Liquid Glass header on iOS 26.
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.body}>
-      {claim.status === "verified" && <Stack.Screen options={{ headerRight: () => <FavoriteButton claim={claim} /> }} />}
+      {claim.status === "verified" && (
+        <Stack.Screen options={{ headerRight: () => <FavoriteButton claim={claim} /> }} />
+      )}
       <Text style={styles.quote}>“{claim.quote}”</Text>
       <Text style={styles.claim}>{claim.claim}</Text>
 
       {r ? <VerdictBadge verdict={r.verdict} lang={claim.language} /> : <CheckingBadge />}
       {r && (
         <>
-          <Text style={styles.muted}>{en ? VERDICT_INFO[r.verdict].definition : `Definição: ${VERDICT_INFO[r.verdict].definition}`}</Text>
+          <Text style={styles.muted}>
+            {en ? VERDICT_INFO[r.verdict].definition : `Definição: ${VERDICT_INFO[r.verdict].definition}`}
+          </Text>
           <View style={styles.stat}>
             <Text style={type.stat}>{Math.round(r.confidence * 100)}%</Text>
             <Text style={styles.label}>Confiança</Text>
@@ -85,7 +91,9 @@ export default function ClaimDetail() {
           <Text style={[styles.label, styles.h]}>Fontes ({r.sources.length})</Text>
           {r.sources.length > 0 && (
             <View style={[card, styles.sources]}>
-              {r.sources.map((s, i) => <SourceRow key={s.url} s={s} first={i === 0} />)}
+              {r.sources.map((s, i) => (
+                <SourceRow key={s.url} s={s} first={i === 0} />
+              ))}
             </View>
           )}
         </>
@@ -110,7 +118,13 @@ const styles = StyleSheet.create({
   explanation: { ...type.bodyMd, color: colors.body },
   h: { marginTop: space.sm },
   sources: { overflow: "hidden" },
-  source: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: space.sm, paddingHorizontal: space.md },
+  source: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+  },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
   pressed: { backgroundColor: colors.surfaceElevated },
   stance: { fontSize: 18, width: 22, textAlign: "center" },

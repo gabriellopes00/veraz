@@ -12,8 +12,23 @@ function Illustration() {
     <Svg width={200} height={150} viewBox="0 0 200 150">
       <Circle cx={100} cy={80} r={64} fill={colors.surfaceSoft} />
       {/* the other side of the conversation */}
-      <Rect x={96} y={20} width={80} height={44} rx={14} fill={colors.surfaceCard} stroke={colors.hairlineStrong} strokeWidth={1.5} />
-      <Path d="M156 64 L162 74 L146 64" fill={colors.surfaceCard} stroke={colors.hairlineStrong} strokeWidth={1.5} strokeLinejoin="round" />
+      <Rect
+        x={96}
+        y={20}
+        width={80}
+        height={44}
+        rx={14}
+        fill={colors.surfaceCard}
+        stroke={colors.hairlineStrong}
+        strokeWidth={1.5}
+      />
+      <Path
+        d="M156 64 L162 74 L146 64"
+        fill={colors.surfaceCard}
+        stroke={colors.hairlineStrong}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
       <Path d="M110 36 H160 M110 48 H142" stroke={colors.hairlineStrong} strokeWidth={5} strokeLinecap="round" />
       {/* the bubble with the claim */}
       <Path

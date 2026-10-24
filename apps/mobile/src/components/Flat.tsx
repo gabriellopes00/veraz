@@ -9,7 +9,9 @@ export function Surface({ tint, interactive: _, visible = true, style, ...props 
   useEffect(() => {
     Animated.timing(opacity, { toValue: visible ? 1 : 0, duration: 200, useNativeDriver: true }).start();
   }, [visible, opacity]);
-  return <Animated.View style={[styles.surface, tint ? { backgroundColor: tint } : null, style, { opacity }]} {...props} />;
+  return (
+    <Animated.View style={[styles.surface, tint ? { backgroundColor: tint } : null, style, { opacity }]} {...props} />
+  );
 }
 
 export function SurfaceGroup({ spacing: _, ...props }: SurfaceGroupProps) {
@@ -41,8 +43,20 @@ export function ActionButton({ label, tone = "primary", size = "medium", onPress
 }
 
 const styles = StyleSheet.create({
-  surface: { ...continuous, backgroundColor: colors.surfaceCard, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.hairline },
-  button: { ...continuous, height: 40, paddingHorizontal: 20, borderRadius: radius.md, justifyContent: "center", alignItems: "center" },
+  surface: {
+    ...continuous,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.hairline,
+  },
+  button: {
+    ...continuous,
+    height: 40,
+    paddingHorizontal: 20,
+    borderRadius: radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   mini: { height: 30, paddingHorizontal: 12, borderRadius: radius.sm },
   miniLabel: { fontSize: 13 },
   small: { height: 36, paddingHorizontal: 14 },

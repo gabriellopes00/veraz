@@ -1,6 +1,6 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { type Claim, VERDICT_INFO } from "@veraz/shared";
 import { router } from "expo-router";
-import { VERDICT_INFO, type Claim } from "@veraz/shared";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFavorites } from "../favorites";
 import { card, colors, space, type } from "../theme";
 import { StarIcon } from "./Icons";
@@ -13,7 +13,10 @@ function Tile({ claim }: { claim: Claim }) {
   const info = VERDICT_INFO[r.verdict];
   const sources = r.sources.length;
   return (
-    <Pressable onPress={() => router.push(`/claim/${claim.id}`)} style={({ pressed }) => [card, styles.tile, pressed && styles.pressed]}>
+    <Pressable
+      onPress={() => router.push(`/claim/${claim.id}`)}
+      style={({ pressed }) => [card, styles.tile, pressed && styles.pressed]}
+    >
       <View style={styles.top}>
         <View style={[styles.verdict, { backgroundColor: info.color }]}>
           <Text style={styles.glyph}>{r.verdict === "TRUE" ? "✓" : r.verdict === "FALSE" ? "✕" : "!"}</Text>
@@ -54,7 +57,13 @@ export function Favorites() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...type.titleLg, color: colors.onDark, paddingHorizontal: space.md, marginTop: space.md, marginBottom: space.sm },
+  title: {
+    ...type.titleLg,
+    color: colors.onDark,
+    paddingHorizontal: space.md,
+    marginTop: space.md,
+    marginBottom: space.sm,
+  },
   row: { paddingHorizontal: space.md, gap: space.sm },
   tile: { width: TILE_W, minHeight: 168, padding: space.md, gap: space.sm },
   pressed: { backgroundColor: colors.surfaceElevated },

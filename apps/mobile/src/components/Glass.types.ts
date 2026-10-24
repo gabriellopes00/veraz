@@ -1,6 +1,6 @@
+import type { Image } from "@expo/ui/swift-ui";
 import type { ComponentProps } from "react";
 import type { ViewProps } from "react-native";
-import type { Image } from "@expo/ui/swift-ui";
 
 export type SurfaceProps = ViewProps & {
   /** Fill on the flat surface; tint of the glass on iOS. */

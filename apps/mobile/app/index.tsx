@@ -1,27 +1,27 @@
+import { FlashList } from "@shopify/flash-list";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollViewInstance,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { FlashList } from "@shopify/flash-list";
 import { useShallow } from "zustand/react/shallow";
 import { useAudioTransport } from "../src/audio";
 import { ClaimCard } from "../src/components/ClaimCard";
 import { EmptyClaims } from "../src/components/EmptyClaims";
 import { Favorites } from "../src/components/Favorites";
 import { FilterChips } from "../src/components/FilterChips";
-import { Logo } from "../src/components/Logo";
 import { ActionButton, Surface } from "../src/components/Glass";
+import { Logo } from "../src/components/Logo";
 import { dockInset, RecordDock } from "../src/components/RecordDock";
 import { AUDIO_MODE } from "../src/config";
 import { endSession, sendText, start } from "../src/live";
@@ -86,7 +86,11 @@ function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boo
 
   return (
     <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
-      <Pressable onPress={() => setTyping(true)} disabled={typing} style={({ pressed }) => [styles.transcript, pressed && styles.pressed]}>
+      <Pressable
+        onPress={() => setTyping(true)}
+        disabled={typing}
+        style={({ pressed }) => [styles.transcript, pressed && styles.pressed]}
+      >
         {!current && live && (
           <View style={styles.window}>
             <Text style={styles.waiting}>{recording ? "Ouvindo…" : "Gravação pausada"}</Text>
@@ -255,7 +259,14 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: space.md, paddingTop: 6 },
-  status: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  status: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
   dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { ...type.caption, color: colors.body },
   transcript: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },

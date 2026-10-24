@@ -11,6 +11,12 @@
     "dev:mobile": "pnpm --filter @veraz/mobile start",
     "replay": "pnpm --filter @veraz/api replay",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "format": "biome format --write",
+    "lint": "biome lint",
+    "check": "biome check --write"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.2"
   }
 }

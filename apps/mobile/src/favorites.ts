@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import type { Claim } from "@veraz/shared";
+import { create } from "zustand";
 
 // MOCK: favourites live in memory, seeded with the claims below, until there is an API to persist them. The rest of
 // the app only goes through the hooks and functions at the bottom of this file, so swapping the source stays local.
@@ -26,8 +26,20 @@ const SEED: Claim[] = [
       explanation:
         "A muralha é longa, mas estreita (cerca de 6 m) e da mesma cor do terreno ao redor. Fotos de órbita só a mostram com lentes de longo alcance.",
       sources: [
-        { title: "Great Wall of China from space", outlet: "NASA", url: "https://www.nasa.gov", published_at: null, stance: "refutes" },
-        { title: "Is the Great Wall visible from space?", outlet: "Scientific American", url: "https://www.scientificamerican.com", published_at: null, stance: "refutes" },
+        {
+          title: "Great Wall of China from space",
+          outlet: "NASA",
+          url: "https://www.nasa.gov",
+          published_at: null,
+          stance: "refutes",
+        },
+        {
+          title: "Is the Great Wall visible from space?",
+          outlet: "Scientific American",
+          url: "https://www.scientificamerican.com",
+          published_at: null,
+          stance: "refutes",
+        },
       ],
     },
   }),
@@ -38,12 +50,25 @@ const SEED: Claim[] = [
     result: {
       verdict: "TRUE",
       confidence: 0.97,
-      summary: "Nenhum outro rio tem vazão comparável: o Amazonas despeja mais água no oceano que os sete seguintes juntos.",
+      summary:
+        "Nenhum outro rio tem vazão comparável: o Amazonas despeja mais água no oceano que os sete seguintes juntos.",
       explanation: "A vazão média na foz é de cerca de 200 mil m³/s, muito acima do Congo, o segundo colocado.",
       sources: [
         { title: "Rio Amazonas", outlet: "ANA", url: "https://www.gov.br/ana", published_at: null, stance: "supports" },
-        { title: "Amazon River", outlet: "Britannica", url: "https://www.britannica.com", published_at: null, stance: "supports" },
-        { title: "The world's largest rivers", outlet: "USGS", url: "https://www.usgs.gov", published_at: null, stance: "supports" },
+        {
+          title: "Amazon River",
+          outlet: "Britannica",
+          url: "https://www.britannica.com",
+          published_at: null,
+          stance: "supports",
+        },
+        {
+          title: "The world's largest rivers",
+          outlet: "USGS",
+          url: "https://www.usgs.gov",
+          published_at: null,
+          stance: "supports",
+        },
       ],
     },
   }),
@@ -56,7 +81,15 @@ const SEED: Claim[] = [
       confidence: 0.8,
       summary: "Depois da água, a bebida mais consumida é o chá; o café vem logo atrás.",
       explanation: "Estimativas de consumo diário põem o chá à frente do café em número de xícaras no mundo.",
-      sources: [{ title: "Tea market report", outlet: "FAO", url: "https://www.fao.org", published_at: null, stance: "refutes" }],
+      sources: [
+        {
+          title: "Tea market report",
+          outlet: "FAO",
+          url: "https://www.fao.org",
+          published_at: null,
+          stance: "refutes",
+        },
+      ],
     },
   }),
   verified({
@@ -69,7 +102,13 @@ const SEED: Claim[] = [
       summary: "Exames de imagem mostram atividade em praticamente todas as regiões do cérebro ao longo do dia.",
       explanation: "O mito não tem base científica; mesmo lesões pequenas em qualquer área costumam ter efeitos.",
       sources: [
-        { title: "Do we only use 10% of our brains?", outlet: "Scientific American", url: "https://www.scientificamerican.com", published_at: null, stance: "refutes" },
+        {
+          title: "Do we only use 10% of our brains?",
+          outlet: "Scientific American",
+          url: "https://www.scientificamerican.com",
+          published_at: null,
+          stance: "refutes",
+        },
       ],
     },
   }),
@@ -92,6 +131,8 @@ export const useFavorite = (id: string) => useFavoritesStore((s) => s.items.find
 export function toggleFavorite(claim: Claim) {
   if (claim.status !== "verified") return;
   useFavoritesStore.setState((s) =>
-    s.items.some((c) => c.id === claim.id) ? { items: s.items.filter((c) => c.id !== claim.id) } : { items: [claim, ...s.items] },
+    s.items.some((c) => c.id === claim.id)
+      ? { items: s.items.filter((c) => c.id !== claim.id) }
+      : { items: [claim, ...s.items] },
   );
 }

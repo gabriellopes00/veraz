@@ -61,13 +61,15 @@ export const VERDICT_INFO: Record<Verdict, VerdictInfo> = {
     pt: "Distorcido",
     en: "Distorted",
     color: "#c2410c",
-    definition: "Real data or facts presented in a twisted way: wrong comparison, cherry-picked period, mixed-up cause and effect.",
+    definition:
+      "Real data or facts presented in a twisted way: wrong comparison, cherry-picked period, mixed-up cause and effect.",
   },
   MISLEADING: {
     pt: "Enganoso",
     en: "Misleading",
     color: "#d97706",
-    definition: "Each piece may be accurate, but the whole leads to a false conclusion because of omitted or manipulated context.",
+    definition:
+      "Each piece may be accurate, but the whole leads to a false conclusion because of omitted or manipulated context.",
   },
   FALSE: {
     pt: "Falso",

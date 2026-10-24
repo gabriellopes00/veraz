@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import type { Claim, ServerEvent, Utterance, Verdict } from "@veraz/shared";
+import { create } from "zustand";
 
 export type Filter = "ALL" | "checking" | Verdict;
 export type Connection = "idle" | "connecting" | "open" | "reconnecting";

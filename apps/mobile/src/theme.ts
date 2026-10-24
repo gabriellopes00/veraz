@@ -33,9 +33,7 @@ export const colors = {
 export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
 
 /** iOS rounds a notch further so cards sit comfortably next to glass capsules. */
-export const radius = IOS
-  ? { xs: 6, sm: 10, md: 12, lg: 20, pill: 999 }
-  : { xs: 4, sm: 6, md: 8, lg: 12, pill: 999 };
+export const radius = IOS ? { xs: 6, sm: 10, md: 12, lg: 20, pill: 999 } : { xs: 4, sm: 6, md: 8, lg: 12, pill: 999 };
 
 /** Squircle corners on iOS; no-op on Android. */
 export const continuous: ViewStyle = { borderCurve: "continuous" };
@@ -49,7 +47,12 @@ export const card: ViewStyle = {
   borderColor: colors.hairline,
 };
 
-const INTER = { "400": "Inter_400Regular", "500": "Inter_500Medium", "600": "Inter_600SemiBold", "700": "Inter_700Bold" } as const;
+const INTER = {
+  "400": "Inter_400Regular",
+  "500": "Inter_500Medium",
+  "600": "Inter_600SemiBold",
+  "700": "Inter_700Bold",
+} as const;
 type Weight = keyof typeof INTER;
 
 /** Inter on Android (each weight is its own family there), the system font on iOS. */

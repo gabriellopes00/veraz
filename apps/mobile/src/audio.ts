@@ -1,6 +1,12 @@
-import { useRef } from "react";
-import { AudioModule, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioStream } from "expo-audio";
 import { resamplePcm16 } from "@veraz/shared";
+import {
+  AudioModule,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioStream,
+} from "expo-audio";
+import { useRef } from "react";
 import { AUDIO_MODE } from "./config";
 import { sendAudio } from "./live";
 

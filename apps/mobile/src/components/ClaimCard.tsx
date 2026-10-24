@@ -1,9 +1,9 @@
-import { memo, useEffect, useRef, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
-import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
-import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 import type { Claim } from "@veraz/shared";
+import { router } from "expo-router";
+import { memo, type ReactNode, useEffect, useRef } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, { interpolate, type SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { toggleFavorite, useIsFavorite } from "../favorites";
 import { useStore } from "../store";
 import { card, colors, continuous, space, type } from "../theme";
@@ -15,9 +15,24 @@ const ACTION_W = 68;
 /** Only one row stays open at a time, as in Mail, WhatsApp and Telegram. */
 let openRow: SwipeableMethods | null = null;
 
-function Action({ label, bg, onPress, children }: { label: string; bg: string; onPress: () => void; children: ReactNode }) {
+function Action({
+  label,
+  bg,
+  onPress,
+  children,
+}: {
+  label: string;
+  bg: string;
+  onPress: () => void;
+  children: ReactNode;
+}) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.actionPressed]} accessibilityRole="button" accessibilityLabel={label}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       <View style={[styles.circle, { backgroundColor: bg }]}>{children}</View>
       <Text style={styles.actionLabel} numberOfLines={1}>
         {label}
@@ -55,7 +70,11 @@ function Actions({ claim, progress, row }: { claim: Claim; progress: SharedValue
           <StarIcon color={colors.onPrimary} filled={!favorite} />
         </Action>
       )}
-      <Action label="Excluir" bg={colors.danger} onPress={() => useStore.getState().apply({ type: "claim.removed", id: claim.id })}>
+      <Action
+        label="Excluir"
+        bg={colors.danger}
+        onPress={() => useStore.getState().apply({ type: "claim.removed", id: claim.id })}
+      >
         <TrashIcon color={colors.onDark} />
       </Action>
     </Animated.View>
@@ -68,6 +87,7 @@ export const ClaimCard = memo(function ClaimCard({ id }: { id: string }) {
   const favorite = useIsFavorite(id);
   const row = useRef<SwipeableMethods>(null);
   // FlashList recycles cells: a row reused for another claim must not arrive swiped open.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `id` is the trigger; the cell is reused for a new claim.
   useEffect(() => () => row.current?.reset(), [id]);
   if (!claim) return null;
   const sources = claim.result?.sources.length ?? 0;
