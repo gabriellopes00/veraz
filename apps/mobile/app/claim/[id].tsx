@@ -7,6 +7,7 @@ import { AiNotice } from "../../src/components/AiNotice";
 import { ClaimActions } from "../../src/components/ClaimActions";
 import { CheckingBadge, VerdictBadge } from "../../src/components/VerdictBadge";
 import { useFavorite } from "../../src/favorites";
+import { DEFINITION_PT } from "../../src/labels";
 import { useStore } from "../../src/store";
 import { card, colors, space, type } from "../../src/theme";
 
@@ -61,7 +62,7 @@ export default function ClaimDetail() {
       {r && (
         <>
           <Text style={styles.muted}>
-            {en ? VERDICT_INFO[r.verdict].definition : `Definição: ${VERDICT_INFO[r.verdict].definition}`}
+            {en ? VERDICT_INFO[r.verdict].definition : `Definição: ${DEFINITION_PT[r.verdict]}`}
           </Text>
           <View style={styles.stat}>
             <Text style={type.stat}>{Math.round(r.confidence * 100)}%</Text>

@@ -6,6 +6,7 @@ import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture
 import Animated, { interpolate, type SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { confirmDeleteClaim } from "../confirm";
 import { toggleFavorite, useIsFavorite } from "../favorites";
+import { CATEGORY_PT } from "../labels";
 import { useStore } from "../store";
 import { card, colors, continuous, space, type } from "../theme";
 import { RecheckIcon, StarIcon, TrashIcon } from "./Icons";
@@ -126,7 +127,8 @@ export const ClaimCard = memo(function ClaimCard({ id }: { id: string }) {
           <View style={styles.metaRow}>
             {favorite && <StarIcon size={14} color={colors.primary} filled />}
             <Text style={styles.meta}>
-              {claim.status === "verified" ? `${sources} ${sources === 1 ? "fonte" : "fontes"}` : claim.category}
+              {CATEGORY_PT[claim.category]}
+              {claim.status === "verified" ? ` · ${sources} ${sources === 1 ? "fonte" : "fontes"}` : ""}
               {claim.cached ? " · cache" : ""}
             </Text>
           </View>

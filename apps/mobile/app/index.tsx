@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   transcript: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },
-  // Same size as the favourite star in the claim screen's header.
-  info: { width: 36, height: 36, borderRadius: 18 },
+  // Same size as the native back button that leads back here (44pt glass circle on iOS 26).
+  info: { width: 44, height: 44, borderRadius: 22 },
   infoHit: { flex: 1, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.6 },
   window: { height: LINE_H * LINES, justifyContent: "flex-end", overflow: "hidden" },

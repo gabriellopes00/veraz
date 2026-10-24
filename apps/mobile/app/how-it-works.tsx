@@ -1,10 +1,11 @@
-import { CATEGORIES, type Category, SOURCES_BY_CATEGORY, VERDICTS, type Verdict } from "@veraz/shared";
+import { CATEGORIES, type Category, SOURCES_BY_CATEGORY, VERDICTS } from "@veraz/shared";
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { AiNotice } from "../src/components/AiNotice";
 import { ChevronIcon } from "../src/components/Icons";
 import { CheckingBadge, VerdictBadge } from "../src/components/VerdictBadge";
+import { CATEGORY_PT, DEFINITION_PT } from "../src/labels";
 import { card, colors, continuous, font, IOS, radius, space, type } from "../src/theme";
 
 const STEPS = [
@@ -29,35 +30,6 @@ const STEPS = [
     body: "A IA compara a afirmação com o que as fontes dizem (números, datas, alcance, causa e efeito) e escolhe o veredito mais preciso, com confiança, resumo, explicação e as fontes usadas.",
   },
 ];
-
-/** Portuguese wording of the definitions in @veraz/shared, which stay in English for the prompts. */
-const DEFINITIONS: Record<Verdict, string> = {
-  TRUE: "Correto e sustentado por fontes confiáveis, sem omissão relevante.",
-  TRUE_BUT: "Correto ao pé da letra, mas falta uma ressalva ou um contexto que muda a leitura.",
-  NOT_QUITE: "Em parte certo, mas um detalhe (quem, quando, onde, como) está errado ou impreciso.",
-  EXAGGERATED: "Vai na direção certa, mas o tamanho, a frequência ou a intensidade foi inflado.",
-  UNDERSTATED: "Vai na direção certa, mas o tamanho, a frequência ou a intensidade real é maior do que o dito.",
-  DISTORTED:
-    "Dados ou fatos reais apresentados de forma torta: comparação errada, período escolhido a dedo, causa e efeito trocados.",
-  MISLEADING:
-    "Cada parte pode estar certa, mas o conjunto leva a uma conclusão falsa por omitir ou manipular o contexto.",
-  FALSE: "Desmentido por fontes confiáveis ou por fatos estabelecidos.",
-  NO_EVIDENCE: "Dá para checar, mas a busca não achou fonte confiável que confirme nem que desminta.",
-  CONTRADICTORY: "Contradiz algo que a mesma pessoa ou a própria conversa disse antes.",
-  OUTDATED: "Já foi verdade, mas dados ou fatos mais recentes mudaram o quadro.",
-  UNVERIFIABLE: "Não dá para checar em fontes públicas: é privado, subjetivo ou vago demais.",
-};
-
-const CATEGORY_PT: Record<Category, string> = {
-  politics: "Política",
-  health: "Saúde",
-  science: "Ciência",
-  economy: "Economia",
-  sports: "Esportes",
-  history: "História",
-  technology: "Tecnologia",
-  general: "Geral",
-};
 
 // Same marks as the source rows of the claim screen.
 const STANCES = [
@@ -195,7 +167,7 @@ export default function HowItWorks() {
             <Row key={v} first={i === 0}>
               <View style={styles.stacked}>
                 <VerdictBadge verdict={v} lang="pt" />
-                <Text style={styles.text}>{DEFINITIONS[v]}</Text>
+                <Text style={styles.text}>{DEFINITION_PT[v]}</Text>
               </View>
             </Row>
           ))}
