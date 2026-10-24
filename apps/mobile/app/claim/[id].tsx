@@ -1,11 +1,12 @@
-import { type Claim, type Source, VERDICT_INFO } from "@veraz/shared";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { type Source, VERDICT_INFO } from "@veraz/shared";
+import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { StarIcon } from "../../src/components/Icons";
+import { AiNotice } from "../../src/components/AiNotice";
+import { ClaimActions } from "../../src/components/ClaimActions";
 import { CheckingBadge, VerdictBadge } from "../../src/components/VerdictBadge";
-import { toggleFavorite, useFavorite, useIsFavorite } from "../../src/favorites";
+import { useFavorite } from "../../src/favorites";
 import { useStore } from "../../src/store";
 import { card, colors, space, type } from "../../src/theme";
 
@@ -36,22 +37,6 @@ function SourceRow({ s, first }: { s: Source; first: boolean }) {
   );
 }
 
-/** Header star: saves the verified claim to Favoritos, or takes it out again. */
-function FavoriteButton({ claim }: { claim: Claim }) {
-  const favorite = useIsFavorite(claim.id);
-  return (
-    <Pressable
-      onPress={() => toggleFavorite(claim)}
-      hitSlop={10}
-      style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.6 }]}
-      accessibilityRole="button"
-      accessibilityLabel={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-    >
-      <StarIcon color={favorite ? colors.primary : colors.onDark} filled={favorite} />
-    </Pressable>
-  );
-}
-
 export default function ClaimDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const live = useStore((s) => s.claims[id]);
@@ -68,9 +53,7 @@ export default function ClaimDetail() {
   return (
     // "automatic" insets the content below the transparent Liquid Glass header on iOS 26.
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.body}>
-      {claim.status === "verified" && (
-        <Stack.Screen options={{ headerRight: () => <FavoriteButton claim={claim} /> }} />
-      )}
+      <ClaimActions claim={claim} />
       <Text style={styles.quote}>“{claim.quote}”</Text>
       <Text style={styles.claim}>{claim.claim}</Text>
 
@@ -96,6 +79,9 @@ export default function ClaimDetail() {
               ))}
             </View>
           )}
+          <View style={styles.h}>
+            <AiNotice />
+          </View>
         </>
       )}
       {claim.status === "error" && <Text style={styles.error}>{claim.error}</Text>}
@@ -105,7 +91,6 @@ export default function ClaimDetail() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  headerButton: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   body: { padding: space.md, paddingBottom: space.xxl, gap: space.sm },
   missing: { ...type.bodyMd, color: colors.muted, padding: 20 },
   quote: { ...type.titleLg, color: colors.onDark },

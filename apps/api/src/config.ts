@@ -10,8 +10,11 @@ export const config = {
   dbPath: env.DB_PATH ?? "veraz.db",
 
   models: {
-    /** Realtime transcription (supports server VAD, detects language). */
-    transcribe: env.MODEL_TRANSCRIBE ?? "gpt-transcribe",
+    /**
+     * Realtime transcription. `gpt-live-transcribe` streams text while the speaker talks (turns detected locally);
+     * `gpt-transcribe` / `gpt-4o-*-transcribe` use server VAD and only transcribe once the speaker pauses.
+     */
+    transcribe: env.MODEL_TRANSCRIBE ?? "gpt-live-transcribe",
     /** Used for `chunked` mode (regular /audio/transcriptions endpoint). */
     transcribeChunk: env.MODEL_TRANSCRIBE_CHUNK ?? "gpt-4o-mini-transcribe",
     extract: env.MODEL_EXTRACT ?? "gpt-5.6-luna",
@@ -23,7 +26,14 @@ export const config = {
   extractEffort: env.EXTRACT_EFFORT ?? "none",
   verifyEffort: env.VERIFY_EFFORT ?? "low",
 
-  vad: { silenceMs: num(env.VAD_SILENCE_MS, 400), threshold: num(env.VAD_THRESHOLD, 0.5) },
+  vad: {
+    silenceMs: num(env.VAD_SILENCE_MS, 400),
+    /** Server VAD only (`gpt-transcribe` and older). */
+    threshold: num(env.VAD_THRESHOLD, 0.5),
+    /** Local turn detection (`gpt-live-transcribe`): speech level, and the longest turn before a forced commit. */
+    speechDb: num(env.VAD_SPEECH_DB, -45),
+    maxTurnMs: num(env.VAD_MAX_TURN_MS, 12_000),
+  },
 
   context: { utterances: 4, priorClaims: 8 },
   verify: {

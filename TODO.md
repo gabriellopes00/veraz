@@ -1,1 +1,2 @@
 - Add option to reverify
+- Identify who is speaking

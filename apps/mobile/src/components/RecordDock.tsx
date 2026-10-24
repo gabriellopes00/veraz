@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
+  FadeIn,
+  FadeOut,
   interpolate,
   useAnimatedProps,
   useAnimatedStyle,
@@ -11,11 +13,14 @@ import Animated, {
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { onLevel } from "../audio";
 import { colors, IOS, radius, space, type } from "../theme";
-import { ActionButton, Surface } from "./Glass";
+import { ActionButton, ConfirmButton, Surface } from "./Glass";
+import { TrashIcon } from "./Icons";
 
 const MARGIN = space.md;
 const PAD = space.md;
 const BUTTON_H = IOS ? 56 : 48;
+/** The trash button next to Gravar: a step down from it, so recording stays the main action. */
+const CLEAR_D = IOS ? 46 : 40;
 const TIME_H = 22;
 const WAVE_H = 52;
 const BAR_W = 3;
@@ -142,15 +147,49 @@ function Waveform({ width, recording }: { width: number; recording: boolean }) {
 /** Close to UIKit's default spring: settles in about half a second with only a hint of overshoot. */
 const SPRING = { duration: 500, dampingRatio: 0.85 };
 
-export function RecordDock({ recording, onToggle }: { recording: boolean; onToggle: () => void }) {
+const CLEAR_CONFIRM = {
+  title: "Limpar a conversa?",
+  message: "As afirmações e a transcrição desta conversa serão apagadas. Os favoritos continuam salvos.",
+  action: "Limpar",
+};
+
+/** Red round button that ends the conversation and clears its claims, once confirmed. */
+function ClearButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+      <ConfirmButton
+        icon="trash"
+        fallbackIcon={<TrashIcon size={IOS ? 22 : 20} color={colors.onDark} />}
+        label="Limpar"
+        size={CLEAR_D}
+        confirm={CLEAR_CONFIRM}
+        onConfirm={onPress}
+      />
+    </Animated.View>
+  );
+}
+
+/** `onClear` adds the trash button to the right of the record button; without it there is nothing to clear. */
+export function RecordDock({
+  recording,
+  onToggle,
+  onClear,
+}: {
+  recording: boolean;
+  onToggle: () => void;
+  onClear?: () => void;
+}) {
   const fullW = useWindowDimensions().width - MARGIN * 2;
+  // The collapsed box is invisible, but touches only land inside it, so it makes room for the trash button and its
+  // mirror slot.
+  const collapsedW = onClear ? COLLAPSED_W + (CLEAR_D + space.sm) * 2 : COLLAPSED_W;
   const progress = useSharedValue(recording ? 1 : 0);
   useEffect(() => {
     progress.value = withSpring(recording ? 1 : 0, SPRING);
   }, [recording, progress]);
 
   const boxStyle = useAnimatedStyle(() => ({
-    width: interpolate(progress.value, [0, 1], [COLLAPSED_W, fullW]),
+    width: interpolate(progress.value, [0, 1], [collapsedW, fullW]),
     height: interpolate(progress.value, [0, 1], [COLLAPSED_H, EXPANDED_H]),
   }));
   const contentStyle = useAnimatedStyle(() => ({
@@ -166,13 +205,18 @@ export function RecordDock({ recording, onToggle }: { recording: boolean; onTogg
           <Elapsed recording={recording} />
           <Waveform width={fullW - PAD * 2} recording={recording} />
         </Animated.View>
-        <ActionButton
-          label={recording ? "Parar" : "Gravar"}
-          icon={recording ? "stop.fill" : "mic.fill"}
-          tone={recording ? "danger" : "primary"}
-          size="large"
-          onPress={onToggle}
-        />
+        <View style={styles.controls}>
+          {/* Mirrors the trash button so the record button stays centred and never jumps. */}
+          {onClear && <View style={styles.clearSlot} />}
+          <ActionButton
+            label={recording ? "Parar" : "Gravar"}
+            icon={recording ? "stop.fill" : "mic.fill"}
+            tone={recording ? "danger" : "primary"}
+            size="large"
+            onPress={onToggle}
+          />
+          {onClear && <ClearButton onPress={onClear} />}
+        </View>
       </Animated.View>
     </View>
   );
@@ -192,5 +236,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   time: { ...type.titleSm, height: TIME_H, color: colors.onDark, fontVariant: ["tabular-nums"] },
+  controls: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  clearSlot: { width: CLEAR_D },
   playhead: { position: "absolute", top: 0, width: 2, height: WAVE_H, borderRadius: 1, backgroundColor: colors.danger },
 });

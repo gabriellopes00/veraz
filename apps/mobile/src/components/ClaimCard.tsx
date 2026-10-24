@@ -4,6 +4,7 @@ import { memo, type ReactNode, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { interpolate, type SharedValue, useAnimatedStyle } from "react-native-reanimated";
+import { confirmDeleteClaim } from "../confirm";
 import { toggleFavorite, useIsFavorite } from "../favorites";
 import { useStore } from "../store";
 import { card, colors, continuous, space, type } from "../theme";
@@ -73,7 +74,10 @@ function Actions({ claim, progress, row }: { claim: Claim; progress: SharedValue
       <Action
         label="Excluir"
         bg={colors.danger}
-        onPress={() => useStore.getState().apply({ type: "claim.removed", id: claim.id })}
+        onPress={() => {
+          row.close();
+          confirmDeleteClaim(claim.id);
+        }}
       >
         <TrashIcon color={colors.onDark} />
       </Action>

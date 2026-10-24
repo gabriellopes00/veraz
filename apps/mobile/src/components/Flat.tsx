@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { confirm as ask } from "../confirm";
 import { colors, continuous, radius, type } from "../theme";
-import type { ActionButtonProps, SurfaceGroupProps, SurfaceProps } from "./Glass.types";
+import type { ActionButtonProps, ConfirmButtonProps, SurfaceGroupProps, SurfaceProps } from "./Glass.types";
 
 /** design.md surfaces and buttons, used on Android and as the fallback where Liquid Glass is unavailable. */
 export function Surface({ tint, interactive: _, visible = true, style, ...props }: SurfaceProps) {
@@ -42,6 +43,25 @@ export function ActionButton({ label, tone = "primary", size = "medium", onPress
   );
 }
 
+/** Round destructive button that asks through the platform's alert before acting. */
+export function ConfirmButton({ fallbackIcon, label, size, confirm, onConfirm }: ConfirmButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => ask(confirm, onConfirm)}
+      hitSlop={6}
+      style={({ pressed }) => [
+        styles.round,
+        { width: size, height: size, borderRadius: size / 2 },
+        { backgroundColor: pressed ? TONE.danger.pressed : TONE.danger.bg },
+      ]}
+    >
+      {fallbackIcon}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   surface: {
     ...continuous,
@@ -61,5 +81,6 @@ const styles = StyleSheet.create({
   miniLabel: { fontSize: 13 },
   small: { height: 36, paddingHorizontal: 14 },
   large: { height: 48, paddingHorizontal: 28 },
+  round: { alignItems: "center", justifyContent: "center" },
   outlined: { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.hairlineStrong },
 });

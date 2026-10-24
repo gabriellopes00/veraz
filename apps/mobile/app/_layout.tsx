@@ -1,13 +1,21 @@
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from "@expo-google-fonts/inter";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  useFonts,
+} from "@expo-google-fonts/inter";
 import { Outfit_700Bold } from "@expo-google-fonts/outfit";
 import { Stack } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { colors, font, IOS } from "../src/theme";
 
 // iOS uses SF Pro, so Inter is only loaded where the design system is applied as-is.
 // Outfit is the wordmark's typeface and is needed on every platform.
-const FONTS = IOS ? { Outfit_700Bold } : { Outfit_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold };
+const FONTS = IOS
+  ? { Outfit_700Bold }
+  : { Outfit_700Bold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold };
 
 export default function Layout() {
   const [loaded] = useFonts(FONTS);
@@ -21,11 +29,21 @@ export default function Layout() {
           headerTintColor: colors.onDark,
           contentStyle: { backgroundColor: colors.canvas },
           // On iOS 26 an unset header background gives the system's transparent Liquid Glass bar.
-          ...(IOS ? {} : { headerStyle: { backgroundColor: colors.canvas }, headerShadowVisible: false, headerTitleStyle: font("600") }),
+          ...(IOS
+            ? {}
+            : {
+                headerStyle: { backgroundColor: colors.canvas },
+                headerShadowVisible: false,
+                headerTitleStyle: font("600"),
+              }),
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="claim/[id]" options={{ title: "Afirmação" }} />
+        <Stack.Screen name="claim/[id]" options={{ title: "Afirmação", headerBackButtonDisplayMode: "minimal" }} />
+        <Stack.Screen
+          name="how-it-works"
+          options={{ title: "Como funciona", headerBackButtonDisplayMode: "minimal" }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

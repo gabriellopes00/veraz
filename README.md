@@ -36,13 +36,14 @@ The API reads `apps/api/.env`; the mobile app reads `apps/mobile/.env` (the `EXP
 | `OPENAI_API_KEY` | api | – | Required unless mock |
 | `MOCK_OPENAI` | api | `false` | `true` = no network, fake data |
 | `PORT` | api | `3000` | Listens on `0.0.0.0` |
-| `MODEL_TRANSCRIBE` | api | `gpt-transcribe` | Realtime transcription (server VAD) |
+| `MODEL_TRANSCRIBE` | api | `gpt-live-transcribe` | Realtime transcription. Streams text while you speak; `gpt-transcribe` waits for a pause (server VAD) |
 | `MODEL_TRANSCRIBE_CHUNK` | api | `gpt-4o-mini-transcribe` | `chunked` mode |
 | `MODEL_EXTRACT` / `MODEL_VERIFY` | api | `gpt-5.6-luna` | Claim extraction / verification |
 | `MODEL_EMBED` | api | `text-embedding-3-small` | Dedup and cache |
 | `EXTRACT_EFFORT` / `VERIFY_EFFORT` | api | `none` / `low` | Reasoning effort |
 | `VERIFY_CONCURRENCY` / `VERIFY_TIMEOUT_MS` | api | `4` / `45000` | Parallel verifications, per-call timeout |
 | `VAD_SILENCE_MS` | api | `400` | Silence that ends an utterance. Lower = faster, more cut sentences |
+| `VAD_SPEECH_DB` / `VAD_MAX_TURN_MS` | api | `-45` / `12000` | `gpt-live-transcribe` turn detection: speech level in dBFS (raise it in noisy rooms), longest utterance before a forced cut |
 | `DEDUP_THRESHOLD` / `CACHE_THRESHOLD` / `CACHE_TTL_HOURS` | api | `0.9` / `0.92` / `24` | Cosine thresholds, cache TTL |
 | `DB_PATH` | api | `veraz.db` | SQLite verdict cache |
 | `EXPO_PUBLIC_API_URL` | mobile | – | `http://<your LAN IP>:3000` |

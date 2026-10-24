@@ -127,6 +127,8 @@ export const useIsFavorite = (id: string) => useFavoritesStore((s) => s.items.so
 
 export const useFavorite = (id: string) => useFavoritesStore((s) => s.items.find((c) => c.id === id));
 
+export const isFavorite = (id: string) => useFavoritesStore.getState().items.some((c) => c.id === id);
+
 /** Only verified claims can be saved: a favourite is a checked fact to come back to. */
 export function toggleFavorite(claim: Claim) {
   if (claim.status !== "verified") return;
@@ -135,4 +137,8 @@ export function toggleFavorite(claim: Claim) {
       ? { items: s.items.filter((c) => c.id !== claim.id) }
       : { items: [claim, ...s.items] },
   );
+}
+
+export function removeFavorite(id: string) {
+  useFavoritesStore.setState((s) => ({ items: s.items.filter((c) => c.id !== id) }));
 }

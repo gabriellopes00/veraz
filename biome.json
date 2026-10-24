@@ -26,6 +26,12 @@
       "preset": "recommended",
       "style": {
         "noNonNullAssertion": "off"
+      },
+      "correctness": {
+        "noReactNativeRawText": {
+          "level": "error",
+          "options": { "skip": ["Stack.Toolbar.MenuAction"] }
+        }
       }
     }
   },

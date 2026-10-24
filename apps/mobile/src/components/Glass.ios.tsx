@@ -1,9 +1,19 @@
 import { Button, Host, HStack, Image, Text } from "@expo/ui/swift-ui";
-import { buttonStyle, controlSize, font, foregroundStyle, tint } from "@expo/ui/swift-ui/modifiers";
+import {
+  accessibilityLabel,
+  buttonStyle,
+  controlSize,
+  font,
+  foregroundStyle,
+  frame,
+  glassEffect,
+  tint,
+} from "@expo/ui/swift-ui/modifiers";
 import { GlassContainer, GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from "expo-glass-effect";
+import { confirm as ask } from "../confirm";
 import { colors } from "../theme";
 import * as Flat from "./Flat";
-import type { ActionButtonProps, SurfaceGroupProps, SurfaceProps } from "./Glass.types";
+import type { ActionButtonProps, ConfirmButtonProps, SurfaceGroupProps, SurfaceProps } from "./Glass.types";
 
 /** iOS 26+ with the glass API present (some 26 betas lack it and crash). Older iOS gets the flat controls. */
 const GLASS = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
@@ -47,6 +57,27 @@ export function ActionButton(props: ActionButtonProps) {
           {icon ? <Image systemName={icon} /> : null}
           <Text modifiers={[font({ weight: "semibold" })]}>{label}</Text>
         </HStack>
+      </Button>
+    </Host>
+  );
+}
+
+/** Round red glass button that asks in the system alert before acting. */
+export function ConfirmButton(props: ConfirmButtonProps) {
+  if (!GLASS) return <Flat.ConfirmButton {...props} />;
+  const { icon, label, size, confirm, onConfirm } = props;
+  return (
+    <Host matchContents colorScheme="dark">
+      <Button onPress={() => ask(confirm, onConfirm)} modifiers={[buttonStyle("plain"), accessibilityLabel(label)]}>
+        <Image
+          systemName={icon}
+          size={Math.round(size * 0.42)}
+          color={colors.onDark}
+          modifiers={[
+            frame({ width: size, height: size }),
+            glassEffect({ glass: { variant: "regular", interactive: true, tint: colors.danger }, shape: "circle" }),
+          ]}
+        />
       </Button>
     </Host>
   );

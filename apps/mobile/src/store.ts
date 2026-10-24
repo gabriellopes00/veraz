@@ -14,7 +14,7 @@ interface State {
   filter: Filter;
   connection: Connection;
   recording: boolean;
-  /** A conversation is under way: set by the first recording, cleared by "Limpar". Pausing keeps it. */
+  /** A conversation is under way: set by the first recording, cleared by the trash button. Pausing keeps it. */
   live: boolean;
   error: string | null;
   apply(e: ServerEvent): void;

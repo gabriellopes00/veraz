@@ -1,4 +1,5 @@
 import { FlashList } from "@shopify/flash-list";
+import { router } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   type NativeScrollEvent,
@@ -20,7 +21,8 @@ import { ClaimCard } from "../src/components/ClaimCard";
 import { EmptyClaims } from "../src/components/EmptyClaims";
 import { Favorites } from "../src/components/Favorites";
 import { FilterChips } from "../src/components/FilterChips";
-import { ActionButton, Surface } from "../src/components/Glass";
+import { Surface } from "../src/components/Glass";
+import { InfoIcon } from "../src/components/Icons";
 import { Logo } from "../src/components/Logo";
 import { dockInset, RecordDock } from "../src/components/RecordDock";
 import { AUDIO_MODE } from "../src/config";
@@ -54,8 +56,9 @@ function TopFade({ height }: { height: number }) {
 /**
  * Teleprompter transcript: what was said before dims and scrolls up under a fade, the sentence being spoken
  * stays bright at the bottom. Scroll up to read back; it follows the speech again once back at the bottom.
- * Tapping it opens a field to type a claim instead of speaking. During a conversation it keeps its place even before
- * anyone speaks; outside one it takes no space until there is something to show.
+ * The empty state's "Digitar afirmação" opens a field under it to type a claim instead of speaking. During a
+ * conversation it keeps its place even before anyone speaks; outside one it takes no space until there is something
+ * to show.
  */
 function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boolean) => void }) {
   const lines = useStore(useShallow((s) => s.utterances.map((u) => u.text)));
@@ -86,11 +89,7 @@ function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boo
 
   return (
     <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
-      <Pressable
-        onPress={() => setTyping(true)}
-        disabled={typing}
-        style={({ pressed }) => [styles.transcript, pressed && styles.pressed]}
-      >
+      <View style={styles.transcript}>
         {!current && live && (
           <View style={styles.window}>
             <Text style={styles.waiting}>{recording ? "Ouvindo…" : "Gravação pausada"}</Text>
@@ -133,14 +132,14 @@ function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boo
             style={styles.input}
           />
         )}
-      </Pressable>
+      </View>
     </Animated.View>
   );
 }
 
 /**
  * Stays put above the list; only the claims scroll, sliding under the filters. Favourites are for browsing, so a
- * conversation puts them away until "Limpar" ends it.
+ * conversation puts them away until the dock's trash button ends it.
  */
 function ClaimsHeader() {
   const live = useStore((s) => s.live);
@@ -195,7 +194,6 @@ function ClaimList({ bottomInset, onType }: { bottomInset: number; onType: () =>
 export default function Live() {
   const transport = useAudioTransport();
   const recording = useStore((s) => s.recording);
-  const connection = useStore((s) => s.connection);
   const error = useStore((s) => s.error);
   const live = useStore((s) => s.live);
   const hasClaims = useStore((s) => s.order.length > 0);
@@ -224,23 +222,22 @@ export default function Live() {
     void endSession();
   };
 
-  const dot = connection === "open" ? colors.success : connection === "idle" ? colors.muted : colors.warning;
-
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <Logo size={IOS ? 30 : 28} />
-        <Surface style={styles.status}>
-          <View style={[styles.dot, { backgroundColor: dot }]} />
-          <Text style={styles.statusText}>{recording ? "ouvindo" : connection === "idle" ? "parado" : connection}</Text>
-        </Surface>
         <View style={styles.flex} />
-        {/* Only when there is something to clear; a conversation paused before any fact still needs a way out. */}
-        {(hasClaims || (live && !recording)) && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-            <ActionButton label="Limpar" icon="arrow.counterclockwise" tone="secondary" size="mini" onPress={clear} />
-          </Animated.View>
-        )}
+        <Surface interactive style={styles.info}>
+          <Pressable
+            onPress={() => router.push("/how-it-works")}
+            hitSlop={8}
+            style={({ pressed }) => [styles.infoHit, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Como funciona"
+          >
+            <InfoIcon color={colors.onDark} />
+          </Pressable>
+        </Surface>
       </View>
       <Transcript typing={typing} setTyping={setTyping} />
       {!!error && <Text style={styles.error}>{error}</Text>}
@@ -248,7 +245,12 @@ export default function Live() {
       <Animated.View style={styles.flex} layout={LinearTransition.springify().duration(450).dampingRatio(0.9)}>
         <ClaimList bottomInset={dockInset(recording)} onType={() => setTyping(true)} />
         <TopFade height={space.md} />
-        <RecordDock recording={recording} onToggle={toggle} />
+        {/* Clearing only when there is something to clear; a conversation paused before any fact still needs a way out. */}
+        <RecordDock
+          recording={recording}
+          onToggle={toggle}
+          onClear={hasClaims || (live && !recording) ? clear : undefined}
+        />
       </Animated.View>
       {AUDIO_MODE === "chunked" && <Text style={styles.mode}>modo chunked (Expo Go)</Text>}
     </SafeAreaView>
@@ -258,19 +260,18 @@ export default function Live() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: space.md, paddingTop: 6 },
-  status: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
+    gap: 10,
+    paddingHorizontal: space.md,
+    paddingTop: 6,
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { ...type.caption, color: colors.body },
   transcript: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },
-  pressed: { opacity: 0.7 },
+  // Same size as the favourite star in the claim screen's header.
+  info: { width: 36, height: 36, borderRadius: 18 },
+  infoHit: { flex: 1, alignItems: "center", justifyContent: "center" },
+  pressed: { opacity: 0.6 },
   window: { height: LINE_H * LINES, justifyContent: "flex-end", overflow: "hidden" },
   scrollBody: { flexGrow: 1, justifyContent: "flex-end", paddingTop: LINE_H / 2 },
   fade: { position: "absolute", top: 0, left: 0, right: 0 },

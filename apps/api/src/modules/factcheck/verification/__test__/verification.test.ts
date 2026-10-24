@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import type { Category, Verification } from "@veraz/shared";
+import { type Category, SOURCES_BY_CATEGORY, type Verification } from "@veraz/shared";
 import { SqliteVerdictCache } from "../verdict-cache.repository.ts";
 import { keepGroundedSources } from "../verification.grounding.ts";
-import { domainsFor, SOURCES_BY_CATEGORY } from "../verification.sources.ts";
+import { domainsFor } from "../verification.sources.ts";
 
 const verdict = (v: Partial<Verification> = {}): Verification => ({
   verdict: "TRUE",

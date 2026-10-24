@@ -67,12 +67,10 @@ export function EmptyClaims({ live, onType }: { live: boolean; onType: () => voi
           ? "As afirmações aparecem aqui assim que forem identificadas."
           : "Comece a gravar uma conversa e o Veraz identifica e verifica as afirmações em tempo real."}
       </Text>
-      {/* During a conversation the transcript itself is the place to tap and type. */}
-      {!live && (
-        <View style={styles.action}>
-          <ActionButton label="Digitar afirmação" icon="keyboard" tone="secondary" size="small" onPress={onType} />
-        </View>
-      )}
+      {/* The only way to type a claim, so it stays during a conversation too. */}
+      <View style={styles.action}>
+        <ActionButton label="Digitar afirmação" icon="keyboard" tone="secondary" size="small" onPress={onType} />
+      </View>
     </Animated.View>
   );
 }
