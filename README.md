@@ -3,25 +3,28 @@
 Real-time fact-checking. The phone streams the mic to the API, the API transcribes it live, extracts check-worthy claims, verifies each one with web search, and pushes verdicts back over one WebSocket.
 
 ```
-apps/api/        Bun + Hono (pipeline, WebSocket, /metrics)
+apps/api/        Node + Fastify (pipeline, WebSocket, /metrics)
 apps/mobile/     Expo + expo-router (Live screen, claim detail)
 packages/shared/ zod schemas, verdict taxonomy, WS event types
 ```
 
+Needs Node 24+ (it runs the TypeScript sources directly, no build step) and pnpm (`corepack enable`).
+
 ## Quick start (no API key)
 
 ```bash
-bun install
-MOCK_OPENAI=true bun run dev:api     # fake transcripts and verdicts
-bun test                             # schemas, dedup, WS flow, pipeline (mock)
-MOCK_OPENAI=true bun run replay      # sample PT-BR transcript, latency per stage
+pnpm install
+MOCK_OPENAI=true pnpm dev:api        # fake transcripts and verdicts
+pnpm test                            # schemas, dedup, WS flow, pipeline (mock)
+MOCK_OPENAI=true pnpm replay         # sample PT-BR transcript, latency per stage
+pnpm check                           # Biome: format + lint (pnpm lint to only report)
 ```
 
 With a real key:
 
 ```bash
 cp .env.example apps/api/.env        # set OPENAI_API_KEY, MOCK_OPENAI=false (API vars only)
-bun run dev:api
+pnpm dev:api
 ```
 
 The API reads `apps/api/.env`; the mobile app reads `apps/mobile/.env` (the `EXPO_PUBLIC_*` vars). `.env.example` at the root lists both.
@@ -66,11 +69,11 @@ Streams raw PCM16 mic frames (~100 ms) over the WebSocket using `expo-audio`'s `
 
 ```bash
 cd apps/mobile
-bunx expo run:ios --device      # needs Xcode + Apple developer account (free is OK); builds and installs on the iPhone
-bun run start:dev-client        # later runs: just start Metro and open the installed app
+pnpm exec expo run:ios --device   # needs Xcode + Apple developer account (free is OK); builds and installs on the iPhone
+pnpm start:dev-client             # later runs: just start Metro and open the installed app
 ```
 
-Alternative without a Mac: `bunx eas-cli build --profile development --platform ios` (EAS account required), then install on the device.
+Alternative without a Mac: `pnpm dlx eas-cli build --profile development --platform ios` (EAS account required), then install on the device.
 
 ### Mode 2: `chunked` — works in Expo Go
 
@@ -78,7 +81,7 @@ Records 5 s `m4a` chunks back to back with `expo-audio`; each chunk is sent as a
 
 ```bash
 cd apps/mobile
-EXPO_PUBLIC_AUDIO_MODE=chunked bunx expo start   # scan the QR code with Expo Go
+EXPO_PUBLIC_AUDIO_MODE=chunked pnpm exec expo start   # scan the QR code with Expo Go
 ```
 
 The text box on the Live screen works in both modes and is the fastest way to test the pipeline.
@@ -112,6 +115,7 @@ curl -s localhost:3000/sessions/$ID | jq '.claims[0].result'
     "verify":     { "n": 9,  "p50": 6200, "p95": 14000 },
     "total":      { "n": 9,  "p50": 7000, "p95": 15000 }
   },
+  "eventLoopDelayMs": { "p50": 0, "p99": 1.2, "max": 4.8 },
   "tokens": { "extract": { "input": 0, "cached": 0, "output": 0, "reasoning": 0, "calls": 0 }, "verify": {}, "embed": {} },
   "claims": { "detected": 0, "verified": 0, "errors": 0, "cacheHits": 0, "duplicates": 0 }
 }
@@ -121,11 +125,15 @@ curl -s localhost:3000/sessions/$ID | jq '.claims[0].result'
 - `extract`: final transcript → claim detected (the card appears on the phone at this point).
 - `verify`: claim detected → verdict.
 - `total`: end of speech → verdict.
+- `eventLoopDelayMs`: how long the event loop was blocked. Anything above a few ms slows every lane; move CPU work to a worker thread.
 - `tokens.*.cached` shows how much input hit OpenAI prompt caching (prompts keep a byte-identical static prefix; variable content goes last).
 
-`bun run replay` prints the same stages per claim for a canned transcript (`OPENAI_API_KEY=… bun run replay` for real numbers).
+`pnpm replay` prints the same stages per claim for a canned transcript (with `OPENAI_API_KEY` in `apps/api/.env` and `MOCK_OPENAI=false` for real numbers).
 
 ## Design notes
+
+- **API layout**: two modules under [apps/api/src/modules/](apps/api/src/modules/). `transcription` turns audio into utterances; `factcheck` owns sessions, claims and verdicts. Every external service (OpenAI, SQLite) sits behind a port with a real and a mock adapter, and [container.ts](apps/api/src/container.ts) is the only place that picks one. See [CLAUDE.md](CLAUDE.md) for the conventions.
+- **Hot lane / cold lane**: a claim card is pushed as soon as extraction returns; dedup, cache and verification run afterwards, in parallel, capped by `VERIFY_CONCURRENCY`. Ending a session aborts its in-flight model calls.
 
 - **Models** (checked against the current OpenAI docs): `gpt-transcribe` for Realtime transcription (server VAD, `audio/pcm` 24 kHz); `gpt-5.6-luna` (the fast, small tier) with Structured Outputs for extraction and, with the `web_search` tool plus `allowed_domains` per topic, for verification; `text-embedding-3-small` for dedup and cache.
 - **Sources are grounded**: the model's source list is filtered to URLs that appeared in `web_search` results or citations. If none survive, the verdict is downgraded to `UNVERIFIABLE`.
