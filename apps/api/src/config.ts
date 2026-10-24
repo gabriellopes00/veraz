@@ -3,6 +3,8 @@ const num = (v: string | undefined, d: number) => (v ? Number(v) : d);
 
 export const config = {
   port: num(env.PORT, 3000),
+  /** 0.0.0.0 so the phone can reach the API over the LAN. */
+  host: env.HOST ?? "0.0.0.0",
   mock: env.MOCK_OPENAI === "true",
   openaiKey: env.OPENAI_API_KEY ?? "",
   dbPath: env.DB_PATH ?? "veraz.db",
@@ -32,3 +34,5 @@ export const config = {
   dedup: { threshold: num(env.DEDUP_THRESHOLD, 0.9) },
   cache: { threshold: num(env.CACHE_THRESHOLD, 0.92), ttlMs: num(env.CACHE_TTL_HOURS, 24) * 3_600_000 },
 };
+
+export type Config = typeof config;

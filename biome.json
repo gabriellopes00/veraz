@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/.expo", "!.claude", "!**/*.md"]
+    "includes": ["**", "!**/.expo", "!.claude", "!**/*.md", "!**/*.yaml"]
   },
   "formatter": {
     "indentStyle": "space",

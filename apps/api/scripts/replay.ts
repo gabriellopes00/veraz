@@ -1,20 +1,17 @@
 // Replays a sample PT-BR transcript through the pipeline and prints latency per stage.
-// Mock:  MOCK_OPENAI=true bun run replay        Real: OPENAI_API_KEY=... bun run replay
-import { createAI } from "../src/ai";
-import { VerdictCache } from "../src/cache";
-import { config } from "../src/config";
-import { Limiter, Session } from "../src/session";
-import { SAMPLE_PT } from "../src/sample";
-import { metrics } from "../src/metrics";
+// Mock:  MOCK_OPENAI=true pnpm replay        Real: pnpm replay (OPENAI_API_KEY in apps/api/.env)
+import { setTimeout as sleep } from "node:timers/promises";
+import { config } from "../src/config.ts";
+import { createContainer } from "../src/container.ts";
+import { SAMPLE_PT } from "../src/modules/transcription/index.ts";
 
-const session = new Session(
-  { mode: "chunked", sampleRate: 24000 },
-  { ai: createAI(), cache: new VerdictCache(":memory:", config.cache.ttlMs), limiter: new Limiter(config.verify.concurrency) },
-);
+const { factcheck, metrics } = createContainer({ ...config, dbPath: ":memory:" });
+const sessions = factcheck.facade;
+const id = sessions.start({ mode: "chunked", sampleRate: 24000 });
 
 const t = new Map<string, { start: number; detected?: number; done?: number }>();
 let current = 0;
-session.subscribe((e) => {
+sessions.subscribe(id, (e) => {
   if (e.type !== "claim") return;
   const now = performance.now();
   const row = t.get(e.claim.id) ?? { start: current };
@@ -22,8 +19,11 @@ session.subscribe((e) => {
   if (e.claim.status === "checking") row.detected = now;
   if (e.claim.status === "verified" || e.claim.status === "error") {
     row.done = now;
+    const detect = (row.detected! - row.start).toFixed(0).padStart(6);
+    const verdict = (row.done - row.detected!).toFixed(0).padStart(6);
+    const label = (e.claim.result?.verdict ?? "ERROR").padEnd(13);
     console.log(
-      `${(row.detected! - row.start).toFixed(0).padStart(6)} ms detect | ${(row.done - row.detected!).toFixed(0).padStart(6)} ms verdict | ${(e.claim.result?.verdict ?? "ERROR").padEnd(13)} | ${e.claim.claim.slice(0, 60)}${e.claim.cached ? " (cache)" : ""}`,
+      `${detect} ms detect | ${verdict} ms verdict | ${label} | ${e.claim.claim.slice(0, 60)}${e.claim.cached ? " (cache)" : ""}`,
     );
   }
 });
@@ -32,8 +32,8 @@ console.log(`mode: ${config.mock ? "mock" : "openai"}\n`);
 const all: Promise<void>[] = [];
 for (const line of SAMPLE_PT) {
   current = performance.now();
-  all.push(session.ingest(line)); // utterances overlap like a live conversation
-  await Bun.sleep(1500); // sentence pacing
+  all.push(sessions.ingestText(id, line)); // utterances overlap like a live conversation
+  await sleep(1500); // sentence pacing
 }
 await Promise.all(all);
 console.log("\n/metrics snapshot:");
