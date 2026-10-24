@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { verdictSchema } from "./verdicts";
+import { verdictSchema } from "./verdicts.ts";
 
 export const CATEGORIES = [
   "politics",

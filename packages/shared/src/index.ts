@@ -1,3 +1,3 @@
-export * from "./audio";
-export * from "./schemas";
-export * from "./verdicts";
+export * from "./audio.ts";
+export * from "./schemas.ts";
+export * from "./verdicts.ts";
