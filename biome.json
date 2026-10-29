@@ -30,7 +30,7 @@
       "correctness": {
         "noReactNativeRawText": {
           "level": "error",
-          "options": { "skip": ["Stack.Toolbar.MenuAction"] }
+          "options": { "skip": ["Stack.Toolbar.MenuAction", "Link.MenuAction"] }
         }
       }
     }

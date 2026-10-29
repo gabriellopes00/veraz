@@ -1,4 +1,4 @@
-import { type Source, VERDICT_INFO } from "@veraz/shared";
+import { type Claim, type Source, VERDICT_INFO } from "@veraz/shared";
 import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useRef } from "react";
@@ -6,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AiNotice } from "../../src/components/AiNotice";
 import { ClaimActions } from "../../src/components/ClaimActions";
 import { CheckingBadge, VerdictBadge } from "../../src/components/VerdictBadge";
-import { useFavorite } from "../../src/favorites";
+import { useFavorite, useIsRechecking } from "../../src/favorites";
 import { DEFINITION_PT } from "../../src/labels";
 import { useStore } from "../../src/store";
 import { card, colors, space, type } from "../../src/theme";
@@ -42,11 +42,14 @@ export default function ClaimDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const live = useStore((s) => s.claims[id]);
   const saved = useFavorite(id);
+  const rechecking = useIsRechecking(id);
   const found = live ?? saved;
   // Keep showing the claim if it leaves both sources while open, e.g. a saved claim being un-starred here.
   const last = useRef(found);
   if (found) last.current = found;
-  const claim = last.current;
+  // A saved claim keeps its old verdict until the new one is in; here it shows as checking, like a live claim.
+  const claim: Claim | undefined =
+    last.current && rechecking ? { ...last.current, status: "checking", result: null } : last.current;
   if (!claim) return <Text style={styles.missing}>Afirmação não encontrada.</Text>;
   const r = claim.result;
   const en = claim.language === "en";

@@ -7,7 +7,17 @@ import { SessionService, type SessionServiceDeps } from "./session/session.servi
 /** Everything the rest of the API may do with fact-checking sessions. */
 export type FactcheckFacade = Pick<
   SessionService,
-  "start" | "state" | "subscribe" | "end" | "receiveAudio" | "ingestText" | "count"
+  | "start"
+  | "state"
+  | "claim"
+  | "removeClaim"
+  | "recheck"
+  | "verify"
+  | "subscribe"
+  | "end"
+  | "receiveAudio"
+  | "ingestText"
+  | "count"
 >;
 
 export interface FactcheckModule {

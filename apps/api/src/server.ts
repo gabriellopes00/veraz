@@ -3,8 +3,8 @@ import Fastify, { type FastifyError } from "fastify";
 import type { Container } from "./container.ts";
 import { InvalidInputError, NotFoundError } from "./shared/errors.ts";
 
-/** Builds the HTTP + WebSocket server without listening (tests use it as-is). */
-export async function buildServer({ config, metrics, factcheck }: Container) {
+/** Builds the HTTP + WebSocket server without listening. */
+export async function buildServer({ metrics, factcheck, favorites }: Container) {
   const app = Fastify();
   await app.register(websocket);
 
@@ -17,9 +17,10 @@ export async function buildServer({ config, metrics, factcheck }: Container) {
     return reply.code(500).send({ error: "internal error" });
   });
 
-  app.get("/health", async () => ({ ok: true, mock: config.mock }));
+  app.get("/health", async () => ({ ok: true }));
   app.get("/metrics", async () => ({ ...metrics.snapshot(), sessions: factcheck.facade.count }));
   await app.register(factcheck.routes);
+  await app.register(favorites.routes);
 
   return app;
 }

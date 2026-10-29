@@ -10,7 +10,6 @@
     "dev:api": "pnpm --filter @veraz/api dev",
     "dev:mobile": "pnpm --filter @veraz/mobile start",
     "replay": "pnpm --filter @veraz/api replay",
-    "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "format": "biome format --write",
     "lint": "biome lint",

@@ -65,6 +65,22 @@ export const claimSchema = z.object({
 });
 export type Claim = z.infer<typeof claimSchema>;
 
+/** A verified claim saved by the user: a snapshot that outlives the session it came from. */
+export const favoriteSchema = claimSchema.extend({
+  status: z.literal("verified"),
+  result: verificationSchema,
+  savedAt: z.number(),
+});
+export type Favorite = z.infer<typeof favoriteSchema>;
+
+/** The server copies the claim from its session, so a favourite only holds what was really verified. */
+export const saveFavoriteSchema = z.object({ sessionId: z.string().min(1), claimId: z.string().min(1) });
+export type SaveFavorite = z.infer<typeof saveFavoriteSchema>;
+
+/** With `sessionId`, a favourite still listed in that live session is rechecked there, so its card updates too. */
+export const recheckFavoriteSchema = z.object({ sessionId: z.string().min(1).optional() });
+export type RecheckFavorite = z.infer<typeof recheckFavoriteSchema>;
+
 export const utteranceSchema = z.object({ id: z.string(), text: z.string() });
 export type Utterance = z.infer<typeof utteranceSchema>;
 

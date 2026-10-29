@@ -10,21 +10,14 @@ packages/shared/ zod schemas, verdict taxonomy, WS event types
 
 Needs Node 24+ (it runs the TypeScript sources directly, no build step) and pnpm (`corepack enable`).
 
-## Quick start (no API key)
+## Quick start
 
 ```bash
 pnpm install
-MOCK_OPENAI=true pnpm dev:api        # fake transcripts and verdicts
-pnpm test                            # schemas, dedup, WS flow, pipeline (mock)
-MOCK_OPENAI=true pnpm replay         # sample PT-BR transcript, latency per stage
-pnpm check                           # Biome: format + lint (pnpm lint to only report)
-```
-
-With a real key:
-
-```bash
-cp .env.example apps/api/.env        # set OPENAI_API_KEY, MOCK_OPENAI=false (API vars only)
+cp .env.example apps/api/.env        # set OPENAI_API_KEY (API vars only)
 pnpm dev:api
+pnpm replay                          # sample PT-BR transcript, latency per stage
+pnpm check                           # Biome: format + lint (pnpm lint to only report)
 ```
 
 The API reads `apps/api/.env`; the mobile app reads `apps/mobile/.env` (the `EXPO_PUBLIC_*` vars). `.env.example` at the root lists both.
@@ -33,8 +26,7 @@ The API reads `apps/api/.env`; the mobile app reads `apps/mobile/.env` (the `EXP
 
 | Var | Where | Default | Meaning |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | api | – | Required unless mock |
-| `MOCK_OPENAI` | api | `false` | `true` = no network, fake data |
+| `OPENAI_API_KEY` | api | – | Required |
 | `PORT` | api | `3000` | Listens on `0.0.0.0` |
 | `MODEL_TRANSCRIBE` | api | `gpt-live-transcribe` | Realtime transcription. Streams text while you speak; `gpt-transcribe` waits for a pause (server VAD) |
 | `MODEL_TRANSCRIBE_CHUNK` | api | `gpt-4o-mini-transcribe` | `chunked` mode |
@@ -95,7 +87,13 @@ The text box on the Live screen works in both modes and is the fastest way to te
 | `GET /sessions/:id` | Session state (claims, utterances) |
 | `DELETE /sessions/:id` | End session |
 | `GET /sessions/:id/ws` | Binary audio in; JSON events out (`snapshot`, `partial`, `utterance`, `claim`, `claim.removed`, `error`). Reconnecting returns a fresh `snapshot` |
+| `DELETE /sessions/:id/claims/:claimId` | Remove a claim; cancels its check if still running (idempotent, 204). The session emits `claim.removed` |
+| `POST /sessions/:id/claims/:claimId/recheck` | Check a settled claim again, skipping the cache (202). The claim goes back to `checking` and its new verdict arrives on the socket; 400 if it is still being checked |
 | `POST /sessions/:id/text` | `{text}` injects an utterance (`?wait=1` waits until its claims settle) |
+| `GET /favorites` | Saved claims, newest first |
+| `POST /favorites` | `{sessionId, claimId}` copies a verified claim from its session → the favourite (idempotent) |
+| `POST /favorites/:id/recheck` | Check a favourite again, skipping the cache, and keep the new verdict → the updated favourite. With `{sessionId}`, a claim still in that live session is rechecked there, so its card updates too |
+| `DELETE /favorites/:id` | Remove a favourite (idempotent, always 204) |
 | `GET /metrics` | Latency and token usage |
 | `GET /health` | |
 
@@ -129,11 +127,11 @@ curl -s localhost:3000/sessions/$ID | jq '.claims[0].result'
 - `eventLoopDelayMs`: how long the event loop was blocked. Anything above a few ms slows every lane; move CPU work to a worker thread.
 - `tokens.*.cached` shows how much input hit OpenAI prompt caching (prompts keep a byte-identical static prefix; variable content goes last).
 
-`pnpm replay` prints the same stages per claim for a canned transcript (with `OPENAI_API_KEY` in `apps/api/.env` and `MOCK_OPENAI=false` for real numbers).
+`pnpm replay` prints the same stages per claim for a canned transcript, against the real models (needs `OPENAI_API_KEY` in `apps/api/.env`).
 
 ## Design notes
 
-- **API layout**: two modules under [apps/api/src/modules/](apps/api/src/modules/). `transcription` turns audio into utterances; `factcheck` owns sessions, claims and verdicts. Every external service (OpenAI, SQLite) sits behind a port with a real and a mock adapter, and [container.ts](apps/api/src/container.ts) is the only place that picks one. See [CLAUDE.md](CLAUDE.md) for the conventions.
+- **API layout**: three modules under [apps/api/src/modules/](apps/api/src/modules/). `transcription` turns audio into utterances; `factcheck` owns sessions, claims and verdicts; `favorites` keeps the claims the user saved, in SQLite. Every external service (OpenAI, SQLite) sits behind a port, and [container.ts](apps/api/src/container.ts) is the only place that wires the adapters. See [CLAUDE.md](CLAUDE.md) for the conventions.
 - **Hot lane / cold lane**: a claim card is pushed as soon as extraction returns; dedup, cache and verification run afterwards, in parallel, capped by `VERIFY_CONCURRENCY`. Ending a session aborts its in-flight model calls.
 
 - **Models** (checked against the current OpenAI docs): `gpt-transcribe` for Realtime transcription (server VAD, `audio/pcm` 24 kHz); `gpt-5.6-luna` (the fast, small tier) with Structured Outputs for extraction and, with the `web_search` tool plus `allowed_domains` per topic, for verification; `text-embedding-3-small` for dedup and cache.
@@ -143,7 +141,7 @@ curl -s localhost:3000/sessions/$ID | jq '.claims[0].result'
 
 ## Known limitations
 
-- Not yet run against the live OpenAI API or on a physical iPhone: the code follows the current docs, the mock flow, tests and the iOS bundle build pass, but model names, the Realtime event shapes and `expo-audio` streaming should be confirmed on first run. Check the API log for `[realtime]` errors if no transcript appears.
+- Not yet run against the live OpenAI API or on a physical iPhone: the code follows the current docs and the iOS bundle build passes, but model names, the Realtime event shapes and `expo-audio` streaming should be confirmed on first run. Check the API log for `[realtime]` errors if no transcript appears.
 - If `gpt-transcribe` or `gpt-5.6-luna` is not available to your account, override `MODEL_*`.
 - Verification takes seconds (it is a web search); expect the "verificando…" state for a while. Raise `VERIFY_EFFORT` for quality, keep it at `low` for speed.
 - Sessions live in memory: a server restart drops them (the app starts a new one). Sessions are only freed by `DELETE`.

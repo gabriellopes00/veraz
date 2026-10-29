@@ -1,144 +1,110 @@
-import type { Claim } from "@veraz/shared";
+import { type Claim, type Favorite, favoriteSchema } from "@veraz/shared";
 import { create } from "zustand";
+import { API_URL } from "./config";
+import { currentSessionId } from "./live";
+import { useStore } from "./store";
 
-// MOCK: favourites live in memory, seeded with the claims below, until there is an API to persist them. The rest of
-// the app only goes through the hooks and functions at the bottom of this file, so swapping the source stays local.
+// Favourites live on the API (GET/POST/DELETE /favorites). Changes show up at once and roll back if the call fails.
+// The rest of the app only goes through the hooks and functions below.
 
-const verified = (c: Pick<Claim, "id" | "quote" | "category"> & { result: NonNullable<Claim["result"]> }): Claim => ({
-  ...c,
-  claim: c.quote,
-  language: "pt",
-  status: "verified",
-  error: null,
-  cached: false,
-  createdAt: 0,
-});
-
-const SEED: Claim[] = [
-  verified({
-    id: "fav-great-wall",
-    quote: "A Muralha da China é visível do espaço a olho nu.",
-    category: "science",
-    result: {
-      verdict: "FALSE",
-      confidence: 0.95,
-      summary: "Astronautas em órbita baixa relatam não conseguir distinguir a muralha sem ajuda óptica.",
-      explanation:
-        "A muralha é longa, mas estreita (cerca de 6 m) e da mesma cor do terreno ao redor. Fotos de órbita só a mostram com lentes de longo alcance.",
-      sources: [
-        {
-          title: "Great Wall of China from space",
-          outlet: "NASA",
-          url: "https://www.nasa.gov",
-          published_at: null,
-          stance: "refutes",
-        },
-        {
-          title: "Is the Great Wall visible from space?",
-          outlet: "Scientific American",
-          url: "https://www.scientificamerican.com",
-          published_at: null,
-          stance: "refutes",
-        },
-      ],
-    },
-  }),
-  verified({
-    id: "fav-amazon-river",
-    quote: "O Rio Amazonas é o maior rio do mundo em volume de água.",
-    category: "science",
-    result: {
-      verdict: "TRUE",
-      confidence: 0.97,
-      summary:
-        "Nenhum outro rio tem vazão comparável: o Amazonas despeja mais água no oceano que os sete seguintes juntos.",
-      explanation: "A vazão média na foz é de cerca de 200 mil m³/s, muito acima do Congo, o segundo colocado.",
-      sources: [
-        { title: "Rio Amazonas", outlet: "ANA", url: "https://www.gov.br/ana", published_at: null, stance: "supports" },
-        {
-          title: "Amazon River",
-          outlet: "Britannica",
-          url: "https://www.britannica.com",
-          published_at: null,
-          stance: "supports",
-        },
-        {
-          title: "The world's largest rivers",
-          outlet: "USGS",
-          url: "https://www.usgs.gov",
-          published_at: null,
-          stance: "supports",
-        },
-      ],
-    },
-  }),
-  verified({
-    id: "fav-coffee",
-    quote: "Depois da água, o café é a bebida mais consumida do mundo.",
-    category: "general",
-    result: {
-      verdict: "NOT_QUITE",
-      confidence: 0.8,
-      summary: "Depois da água, a bebida mais consumida é o chá; o café vem logo atrás.",
-      explanation: "Estimativas de consumo diário põem o chá à frente do café em número de xícaras no mundo.",
-      sources: [
-        {
-          title: "Tea market report",
-          outlet: "FAO",
-          url: "https://www.fao.org",
-          published_at: null,
-          stance: "refutes",
-        },
-      ],
-    },
-  }),
-  verified({
-    id: "fav-brain",
-    quote: "Nós usamos apenas 10% do nosso cérebro.",
-    category: "health",
-    result: {
-      verdict: "FALSE",
-      confidence: 0.96,
-      summary: "Exames de imagem mostram atividade em praticamente todas as regiões do cérebro ao longo do dia.",
-      explanation: "O mito não tem base científica; mesmo lesões pequenas em qualquer área costumam ter efeitos.",
-      sources: [
-        {
-          title: "Do we only use 10% of our brains?",
-          outlet: "Scientific American",
-          url: "https://www.scientificamerican.com",
-          published_at: null,
-          stance: "refutes",
-        },
-      ],
-    },
-  }),
-];
+/** `failed` and `retrying` keep the error showing, so a retry does not make it flicker away and back. */
+export type FavoritesStatus = "idle" | "loading" | "ready" | "failed" | "retrying";
 
 interface FavoritesState {
   /** Newest first. A snapshot of each claim, so it outlives the session it came from. */
-  items: Claim[];
+  items: Favorite[];
+  status: FavoritesStatus;
+  /** Ids waiting for a fresh verdict. */
+  rechecking: string[];
 }
 
-const useFavoritesStore = create<FavoritesState>(() => ({ items: SEED }));
+const useFavoritesStore = create<FavoritesState>(() => ({ items: [], status: "idle", rechecking: [] }));
+const { getState, setState } = useFavoritesStore;
 
 export const useFavorites = () => useFavoritesStore((s) => s.items);
+
+export const useFavoritesStatus = () => useFavoritesStore((s) => s.status);
 
 export const useIsFavorite = (id: string) => useFavoritesStore((s) => s.items.some((c) => c.id === id));
 
 export const useFavorite = (id: string) => useFavoritesStore((s) => s.items.find((c) => c.id === id));
 
-export const isFavorite = (id: string) => useFavoritesStore.getState().items.some((c) => c.id === id);
+export const useIsRechecking = (id: string) => useFavoritesStore((s) => s.rechecking.includes(id));
+
+export const isFavorite = (id: string) => getState().items.some((c) => c.id === id);
+
+const listSchema = favoriteSchema.array();
+
+async function request(method: string, path: string, body?: unknown) {
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: body ? { "content-type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}`);
+  return res.status === 204 ? null : res.json();
+}
+
+/** Puts `before` back and says why. */
+const rollback = (before: Favorite[], what: string) => (e: unknown) => {
+  setState({ items: before });
+  useStore.getState().set({ error: `Não foi possível ${what} o favorito: ${String(e)}` });
+};
+
+/** A failure shows in the Favoritos section itself, which offers a retry. */
+export async function loadFavorites() {
+  const { status } = getState();
+  if (status === "loading" || status === "retrying") return;
+  setState({ status: status === "failed" ? "retrying" : "loading" });
+  try {
+    setState({ items: listSchema.parse(await request("GET", "/favorites")), status: "ready" });
+  } catch (e) {
+    console.warn(`GET ${API_URL}/favorites failed:`, e);
+    setState({ status: "failed" });
+  }
+}
+
+/** Loads on first use, and tries again after a failure; a no-op once loaded. */
+export function ensureFavorites() {
+  const { status } = getState();
+  if (status === "idle" || status === "failed") void loadFavorites();
+}
 
 /** Only verified claims can be saved: a favourite is a checked fact to come back to. */
 export function toggleFavorite(claim: Claim) {
-  if (claim.status !== "verified") return;
-  useFavoritesStore.setState((s) =>
-    s.items.some((c) => c.id === claim.id)
-      ? { items: s.items.filter((c) => c.id !== claim.id) }
-      : { items: [claim, ...s.items] },
-  );
+  if (isFavorite(claim.id)) return removeFavorite(claim.id);
+  const sessionId = currentSessionId();
+  if (claim.status !== "verified" || !claim.result || !sessionId) return;
+  const before = getState().items;
+  // The server copies the claim from its session; the local snapshot is replaced by its answer.
+  setState({ items: [{ ...claim, status: "verified", result: claim.result, savedAt: Date.now() }, ...before] });
+  request("POST", "/favorites", { sessionId, claimId: claim.id })
+    .then((saved) => {
+      const favorite = favoriteSchema.parse(saved);
+      setState((s) => ({ items: s.items.map((c) => (c.id === favorite.id ? favorite : c)) }));
+    })
+    .catch(rollback(before, "salvar"));
+}
+
+/** Keeps the old verdict on screen until the new one replaces it. With `sessionId`, the live card follows along. */
+export async function recheckFavorite(id: string, sessionId?: string) {
+  if (getState().rechecking.includes(id)) return;
+  setState((s) => ({ rechecking: [...s.rechecking, id] }));
+  try {
+    const body = sessionId ? { sessionId } : {};
+    const favorite = favoriteSchema.parse(await request("POST", `/favorites/${encodeURIComponent(id)}/recheck`, body));
+    setState((s) => ({ items: s.items.map((c) => (c.id === id ? favorite : c)) }));
+  } catch (e) {
+    // Removed while it was checked: nothing left to update.
+    if (isFavorite(id)) useStore.getState().set({ error: `Não foi possível revisar o favorito: ${String(e)}` });
+  } finally {
+    setState((s) => ({ rechecking: s.rechecking.filter((r) => r !== id) }));
+  }
 }
 
 export function removeFavorite(id: string) {
-  useFavoritesStore.setState((s) => ({ items: s.items.filter((c) => c.id !== id) }));
+  const before = getState().items;
+  if (!before.some((c) => c.id === id)) return;
+  setState({ items: before.filter((c) => c.id !== id) });
+  request("DELETE", `/favorites/${encodeURIComponent(id)}`).catch(rollback(before, "remover"));
 }

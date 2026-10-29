@@ -25,6 +25,21 @@ export const sessionRoutes =
       return reply.code(204).send();
     });
 
+    // Idempotent: a claim already gone (deleted, or dropped as a duplicate) still gets 204.
+    app.delete<{ Params: { id: string; claimId: string } }>("/sessions/:id/claims/:claimId", async (req, reply) => {
+      sessions.removeClaim(req.params.id, req.params.claimId);
+      return reply.code(204).send();
+    });
+
+    // The verdict arrives over the WebSocket, like the first one.
+    app.post<{ Params: { id: string; claimId: string } }>(
+      "/sessions/:id/claims/:claimId/recheck",
+      async (req, reply) => {
+        void sessions.recheck(req.params.id, req.params.claimId);
+        return reply.code(202).send({ ok: true });
+      },
+    );
+
     app.post<ById & { Querystring: { wait?: string } }>("/sessions/:id/text", async (req, reply) => {
       const body = typeof req.body === "object" ? req.body : {};
       const msg = parse(clientMessageSchema, { type: "text", ...body });

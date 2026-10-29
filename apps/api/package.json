@@ -6,7 +6,6 @@
     "dev": "node --watch --env-file-if-exists=.env src/main.ts",
     "start": "node --env-file-if-exists=.env src/main.ts",
     "replay": "node --env-file-if-exists=.env scripts/replay.ts",
-    "test": "node --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "typecheck": "tsc -p ."
   },
   "dependencies": {

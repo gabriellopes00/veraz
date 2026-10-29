@@ -7,6 +7,7 @@ import Animated, { interpolate, type SharedValue, useAnimatedStyle } from "react
 import { confirmDeleteClaim } from "../confirm";
 import { toggleFavorite, useIsFavorite } from "../favorites";
 import { CATEGORY_PT } from "../labels";
+import { recheckClaim } from "../recheck";
 import { useStore } from "../store";
 import { card, colors, continuous, space, type } from "../theme";
 import { RecheckIcon, StarIcon, TrashIcon } from "./Icons";
@@ -55,8 +56,14 @@ function Actions({ claim, progress, row }: { claim: Claim; progress: SharedValue
   return (
     <Animated.View style={[styles.actions, style]}>
       {settled && (
-        // MOCK: will ask the API to check the claim again; for now it only closes the row.
-        <Action label="Revisar" bg={colors.surfaceElevated} onPress={() => row.close()}>
+        <Action
+          label="Revisar"
+          bg={colors.surfaceElevated}
+          onPress={() => {
+            recheckClaim(claim.id);
+            row.close();
+          }}
+        >
           <RecheckIcon color={colors.onDark} />
         </Action>
       )}

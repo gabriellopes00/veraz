@@ -1,11 +1,10 @@
 const env = process.env;
-const num = (v: string | undefined, d: number) => (v ? Number(v) : d);
+const parseEnvNum = (v: string | undefined, d: number) => (v ? Number(v) : d);
 
 export const config = {
-  port: num(env.PORT, 3000),
+  port: parseEnvNum(env.PORT, 3000),
   /** 0.0.0.0 so the phone can reach the API over the LAN. */
   host: env.HOST ?? "0.0.0.0",
-  mock: env.MOCK_OPENAI === "true",
   openaiKey: env.OPENAI_API_KEY ?? "",
   dbPath: env.DB_PATH ?? "veraz.db",
 
@@ -27,22 +26,22 @@ export const config = {
   verifyEffort: env.VERIFY_EFFORT ?? "low",
 
   vad: {
-    silenceMs: num(env.VAD_SILENCE_MS, 400),
+    silenceMs: parseEnvNum(env.VAD_SILENCE_MS, 400),
     /** Server VAD only (`gpt-transcribe` and older). */
-    threshold: num(env.VAD_THRESHOLD, 0.5),
+    threshold: parseEnvNum(env.VAD_THRESHOLD, 0.5),
     /** Local turn detection (`gpt-live-transcribe`): speech level, and the longest turn before a forced commit. */
-    speechDb: num(env.VAD_SPEECH_DB, -45),
-    maxTurnMs: num(env.VAD_MAX_TURN_MS, 12_000),
+    speechDb: parseEnvNum(env.VAD_SPEECH_DB, -45),
+    maxTurnMs: parseEnvNum(env.VAD_MAX_TURN_MS, 12_000),
   },
 
   context: { utterances: 4, priorClaims: 8 },
   verify: {
-    concurrency: num(env.VERIFY_CONCURRENCY, 4),
-    timeoutMs: num(env.VERIFY_TIMEOUT_MS, 45_000),
+    concurrency: parseEnvNum(env.VERIFY_CONCURRENCY, 4),
+    timeoutMs: parseEnvNum(env.VERIFY_TIMEOUT_MS, 45_000),
     maxDomains: 100, // web_search allowed_domains limit
   },
-  dedup: { threshold: num(env.DEDUP_THRESHOLD, 0.9) },
-  cache: { threshold: num(env.CACHE_THRESHOLD, 0.92), ttlMs: num(env.CACHE_TTL_HOURS, 24) * 3_600_000 },
+  dedup: { threshold: parseEnvNum(env.DEDUP_THRESHOLD, 0.9) },
+  cache: { threshold: parseEnvNum(env.CACHE_THRESHOLD, 0.92), ttlMs: parseEnvNum(env.CACHE_TTL_HOURS, 24) * 3_600_000 },
 };
 
 export type Config = typeof config;

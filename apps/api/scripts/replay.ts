@@ -1,9 +1,21 @@
 // Replays a sample PT-BR transcript through the pipeline and prints latency per stage.
-// Mock:  MOCK_OPENAI=true pnpm replay        Real: pnpm replay (OPENAI_API_KEY in apps/api/.env)
+// Usage: pnpm replay (OPENAI_API_KEY in apps/api/.env)
 import { setTimeout as sleep } from "node:timers/promises";
 import { config } from "../src/config.ts";
 import { createContainer } from "../src/container.ts";
-import { SAMPLE_PT } from "../src/modules/transcription/index.ts";
+
+const SAMPLE_PT = [
+  "Bom dia pessoal, vamos começar o debate de hoje.",
+  "O Brasil tem mais de 200 milhões de habitantes segundo o último censo do IBGE.",
+  "Eu acho que esse governo está fazendo um trabalho péssimo.",
+  "A inflação em 2023 foi de 4,62 por cento.",
+  "A vacina da gripe causa autismo em crianças.",
+  "O Brasil ganhou cinco Copas do Mundo, a última em 2002.",
+  "E esse número de 200 milhões de habitantes está crescendo todo ano?",
+  "O Brasil tem menos de 100 milhões de habitantes.",
+  "Amanhã vai chover o dia inteiro, tenho certeza.",
+  "A Amazônia perdeu mais de 10 mil quilômetros quadrados de floresta em 2022.",
+];
 
 const { factcheck, metrics } = createContainer({ ...config, dbPath: ":memory:" });
 const sessions = factcheck.facade;
@@ -28,7 +40,6 @@ sessions.subscribe(id, (e) => {
   }
 });
 
-console.log(`mode: ${config.mock ? "mock" : "openai"}\n`);
 const all: Promise<void>[] = [];
 for (const line of SAMPLE_PT) {
   current = performance.now();

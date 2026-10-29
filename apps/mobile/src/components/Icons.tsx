@@ -109,3 +109,38 @@ export function MoreIcon({ size = 22, color }: IconProps) {
     </Svg>
   );
 }
+
+/** Wi-Fi with a slash: the API cannot be reached. */
+export function OfflineIcon({ size = 22, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M2.5 8.8a14 14 0 0 1 19 0M5.5 12.4a9.5 9.5 0 0 1 13 0M8.7 15.9a5 5 0 0 1 6.6 0M12 19.5h.01M3.5 3.5l17 17" />
+    </Svg>
+  );
+}
+
+/** An x: dismiss. */
+export function CloseIcon({ size = 22, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+    >
+      <Path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+    </Svg>
+  );
+}

@@ -3,17 +3,16 @@ import { router, Stack } from "expo-router";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { confirmDeleteClaim } from "../confirm";
 import { toggleFavorite, useIsFavorite } from "../favorites";
+import { recheckClaim } from "../recheck";
 import { colors, IOS } from "../theme";
 import { MoreIcon, StarIcon } from "./Icons";
-
-// MOCK: will ask the API to check the claim again, like the card's "Revisar" swipe action.
-const recheck = () => {};
 
 /** Once the deletion is confirmed, the screen closes. */
 const askDelete = (claim: Claim) => confirmDeleteClaim(claim.id, () => router.back());
 
 /**
- * Header actions of the claim screen: a star to favourite and a "more" menu with favourite, review and delete.
+ * Header actions of the claim screen: a star to favourite and a "more" menu with review and delete. The favourites
+ * row's long-press menu offers the same two.
  * iOS uses native bar items, which iOS 26 joins into one Liquid Glass capsule. Android's header toolbar only draws
  * bundled images, so it gets the drawn icons and a system dialog for the menu.
  */
@@ -34,14 +33,7 @@ export function ClaimActions({ claim }: { claim: Claim }) {
           accessibilityLabel={favoriteLabel}
         />
         <Stack.Toolbar.Menu icon="ellipsis" accessibilityLabel="Mais ações">
-          <Stack.Toolbar.MenuAction
-            icon={favorite ? "star.slash" : "star"}
-            hidden={!verified}
-            onPress={() => toggleFavorite(claim)}
-          >
-            {favoriteLabel}
-          </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="arrow.clockwise" hidden={!settled} onPress={recheck}>
+          <Stack.Toolbar.MenuAction icon="arrow.clockwise" hidden={!settled} onPress={() => recheckClaim(claim.id)}>
             Revisar
           </Stack.Toolbar.MenuAction>
           {/* An inline section, so a separator sets delete apart as in the system apps. */}
@@ -59,8 +51,7 @@ export function ClaimActions({ claim }: { claim: Claim }) {
       "Afirmação",
       undefined,
       [
-        ...(verified ? [{ text: favoriteLabel, onPress: () => toggleFavorite(claim) }] : []),
-        ...(settled ? [{ text: "Revisar", onPress: recheck }] : []),
+        ...(settled ? [{ text: "Revisar", onPress: () => recheckClaim(claim.id) }] : []),
         { text: "Excluir", style: "destructive" as const, onPress: () => askDelete(claim) },
       ],
       { cancelable: true },

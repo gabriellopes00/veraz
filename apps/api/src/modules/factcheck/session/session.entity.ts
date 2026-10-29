@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Claim, CreateSession, ServerEvent, Utterance, Verification } from "@veraz/shared";
-import { NotFoundError } from "../../../shared/errors.ts";
+import { InvalidInputError, NotFoundError } from "../../../shared/errors.ts";
 import { cosine } from "../../../shared/vector.ts";
 import type { TranscriptStream } from "../../transcription/index.ts";
 import type { ExtractedClaim } from "../claim/claim.ports.ts";
@@ -25,6 +25,8 @@ export class FactcheckSession {
   /** Aborted when the session ends, which cancels every model call still in flight. */
   private readonly abort = new AbortController();
   private readonly claims = new Map<string, Claim>();
+  /** One per claim still being checked: removing the claim cancels its embedding and verification. */
+  private readonly checks = new Map<string, AbortController>();
   private readonly utterances: Utterance[] = [];
   private readonly embeddings: number[][] = [];
   private readonly speechStops: number[] = [];
@@ -92,8 +94,15 @@ export class FactcheckSession {
       createdAt: Date.now(),
     };
     this.claims.set(claim.id, claim);
+    this.checks.set(claim.id, new AbortController());
     this.emit({ type: "claim", claim: { ...claim } });
     return { ...claim };
+  }
+
+  /** Aborted when the claim is removed or the session ends. */
+  claimSignal(id: string): AbortSignal {
+    const check = this.checks.get(id);
+    return check ? AbortSignal.any([this.signal, check.signal]) : AbortSignal.abort();
   }
 
   /**
@@ -106,7 +115,10 @@ export class FactcheckSession {
     return true;
   }
 
+  /** Removes a claim (a duplicate, or deleted by the user) and cancels its check if it is still running. */
   dropClaim(id: string) {
+    this.checks.get(id)?.abort();
+    this.checks.delete(id);
     if (this.claims.delete(id)) this.emit({ type: "claim.removed", id });
   }
 
@@ -116,6 +128,22 @@ export class FactcheckSession {
       .filter((c) => c.status === "verified")
       .slice(-limit)
       .map((c) => ({ claim: c.claim, verdict: c.result?.verdict ?? null }));
+  }
+
+  claim(id: string): Claim | undefined {
+    const claim = this.claims.get(id);
+    return claim && { ...claim };
+  }
+
+  /** Puts a settled claim back to `checking` for a fresh verification. */
+  recheckClaim(id: string): Claim {
+    const claim = this.claims.get(id);
+    if (!claim) throw new NotFoundError(`claim ${id} not found`);
+    if (this.checks.has(id)) throw new InvalidInputError("claim is still being checked");
+    this.checks.set(id, new AbortController());
+    Object.assign(claim, { status: "checking", result: null, error: null, cached: false });
+    this.emit({ type: "claim", claim: { ...claim } });
+    return { ...claim };
   }
 
   resolveClaim(id: string, result: Verification, cached: boolean) {
@@ -143,6 +171,7 @@ export class FactcheckSession {
   private update(id: string, patch: Partial<Claim>) {
     const claim = this.claims.get(id);
     if (!claim) return;
+    this.checks.delete(id); // settled
     Object.assign(claim, patch);
     this.emit({ type: "claim", claim: { ...claim } });
   }

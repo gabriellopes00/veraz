@@ -25,8 +25,9 @@ import { Surface } from "../src/components/Glass";
 import { InfoIcon } from "../src/components/Icons";
 import { Logo } from "../src/components/Logo";
 import { dockInset, RecordDock } from "../src/components/RecordDock";
+import { ServerError } from "../src/components/ServerError";
 import { AUDIO_MODE } from "../src/config";
-import { endSession, sendText, start } from "../src/live";
+import { endSession, sendText, start, withApi } from "../src/live";
 import { matchesFilter, useStore } from "../src/store";
 import { colors, font, IOS, radius, space, type } from "../src/theme";
 
@@ -79,7 +80,7 @@ function Transcript({ typing, setTyping }: { typing: boolean; setTyping: (v: boo
     const v = text.trim();
     if (!v) return;
     setText("");
-    sendText(v).catch((e) => useStore.getState().set({ error: String(e) }));
+    void withApi("Não foi possível enviar a afirmação", () => sendText(v));
   };
 
   // The live partial is the current sentence; between sentences it is the last one finished.
@@ -195,25 +196,31 @@ export default function Live() {
   const transport = useAudioTransport();
   const recording = useStore((s) => s.recording);
   const error = useStore((s) => s.error);
+  const offline = useStore((s) => s.offline);
   const live = useStore((s) => s.live);
   const hasClaims = useStore((s) => s.order.length > 0);
   const [typing, setTyping] = useState(false);
 
-  const toggle = useCallback(async () => {
-    const { set } = useStore.getState();
-    try {
-      if (useStore.getState().recording) {
-        await transport.stop();
-        set({ recording: false });
-      } else {
-        await start(); // session + socket first, so no audio is lost
-        await transport.start();
-        set({ recording: true, live: true, error: null });
-      }
-    } catch (e) {
-      set({ recording: false, error: e instanceof Error ? e.message : String(e) });
-    }
-  }, [transport]);
+  const toggle = useCallback(
+    () =>
+      withApi("Não foi possível começar a gravar", async () => {
+        const { set } = useStore.getState();
+        try {
+          if (useStore.getState().recording) {
+            await transport.stop();
+            set({ recording: false });
+          } else {
+            await start(); // session + socket first, so no audio is lost
+            await transport.start();
+            set({ recording: true, live: true, error: null });
+          }
+        } catch (e) {
+          set({ recording: false });
+          throw e;
+        }
+      }),
+    [transport],
+  );
 
   const clear = () => {
     void transport.stop();
@@ -240,7 +247,18 @@ export default function Live() {
         </Surface>
       </View>
       <Transcript typing={typing} setTyping={setTyping} />
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {offline ? (
+        <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.offline}>
+          <ServerError
+            title={offline.title}
+            retrying={offline.retrying}
+            onRetry={offline.retry}
+            onDismiss={() => useStore.getState().set({ offline: null })}
+          />
+        </Animated.View>
+      ) : (
+        !!error && <Text style={styles.error}>{error}</Text>
+      )}
       <ClaimsHeader />
       <Animated.View style={styles.flex} layout={LinearTransition.springify().duration(450).dampingRatio(0.9)}>
         <ClaimList bottomInset={dockInset(recording)} onType={() => setTyping(true)} />
@@ -291,6 +309,7 @@ const styles = StyleSheet.create({
     ...(IOS ? null : { borderWidth: 1, borderColor: colors.primary }),
   },
   error: { ...type.bodySm, color: colors.danger, paddingHorizontal: space.md, paddingTop: space.xs },
+  offline: { marginTop: space.md },
   section: { ...type.titleLg, color: colors.onDark, paddingHorizontal: space.md, marginTop: space.lg },
   mode: { ...type.caption, fontSize: 11, color: colors.muted, textAlign: "center", paddingBottom: 4 },
 });
