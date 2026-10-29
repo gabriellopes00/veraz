@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   FadeIn,
@@ -11,7 +11,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
-import { onLevel } from "../audio";
+import { LEVEL_MS, onLevel } from "../audio";
 import { colors, IOS, radius, space, type } from "../theme";
 import { ActionButton, ConfirmButton, Surface } from "./Glass";
 import { TrashIcon } from "./Icons";
@@ -46,65 +46,103 @@ function Elapsed({ recording }: { recording: boolean }) {
   return <Text style={styles.time}>{`${Math.floor(secs / 60)}:${pad2(secs % 60)}`}</Text>;
 }
 
-/** How long one bar covers. The tape scrolls one pitch per slot, so this sets the scroll speed (~60 px/s). */
-const SLOT_MS = 80;
+/** How long one bar covers: one mic level per slot, so the tape scrolls one pitch per level (~70 px/s). */
+const SLOT_MS = LEVEL_MS;
 const PITCH = BAR_W + BAR_GAP;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-/** Shortest tick, drawn for silence so the tape never goes blank. */
-const MIN_H = 2;
-
-/**
- * Levels are -50..0 dBFS mapped to 0..1. Below about -39 dBFS is room noise and stays a tick; normal speech
- * (-30..-12 dBFS) is stretched across the whole height so talking and silence read clearly apart.
- */
-const shape = (l: number) => {
-  "worklet";
-  return Math.min(1, Math.max(0, (l - 0.22) / 0.53));
-};
+/** Shortest bar: silence draws as a dot (the round cap), like the dotted track ahead of the playhead. */
+const MIN_H = 0;
+/** Levels waiting for their slot. Buffers arrive in bursts; a short queue lets them leave at an even pace. */
+const QUEUE_TARGET = 2;
+const QUEUE_MAX = 8;
+/** Narrowest range between noise floor and ceiling, in dB, so a silent room is never stretched into full bars. */
+const MIN_SPAN = 14;
+/** How far above the noise floor, in dB, a sound must be to rise from a dot. */
+const GATE = 6;
 
 /**
  * Voice-Memos-style tape: recent levels scroll left out of the playhead, the dotted track on its right feeds in.
- * Everything runs on the UI thread: mic levels only set a target, and a frame callback follows it with an envelope,
- * cuts it into fixed slots and scrolls them at a constant speed, so bursty audio buffers never show as jumps.
+ * Each mic level (one per LEVEL_MS of audio) becomes exactly one bar, so neighbouring syllables keep their own
+ * heights. JS only publishes levels with a running count; a frame callback on the UI thread takes them at a constant
+ * speed, so bursty audio buffers never show as jumps.
  */
 function Waveform({ width, recording }: { width: number; recording: boolean }) {
   const head = Math.round(width * 0.62);
   const count = Math.ceil(head / PITCH) + 1;
   const mid = WAVE_H / 2;
 
-  const target = useSharedValue(0);
-  const env = useSharedValue(0);
-  const peak = useSharedValue(0);
+  // Written only by JS: how many levels so far and the last few. The UI thread only reads it, so nothing races.
+  // Each write is a fresh object: whatever reaches a worklet gets frozen, so it can never be updated in place.
+  const feed = useSharedValue({ n: 0, recent: [] as number[] });
+  const fedN = useRef(0);
+  const fedRecent = useRef<number[]>([]);
+  const taken = useSharedValue(0); // levels turned into bars
+  const floor = useSharedValue(1); // noise floor in dBFS, 1 (above full scale) until the first level
+  const ceil = useSharedValue(-100);
   const phase = useSharedValue(0); // 0..1 through the current slot
   const bars = useSharedValue<number[]>(Array(count).fill(0));
 
-  useEffect(() => onLevel((l) => (target.value = l)), [target]);
+  useEffect(
+    () =>
+      onLevel((l) => {
+        fedN.current += 1;
+        fedRecent.current = [...fedRecent.current.slice(1 - QUEUE_MAX), l];
+        feed.value = { n: fedN.current, recent: fedRecent.current };
+      }),
+    [feed],
+  );
+
+  /**
+   * Bar height 0..1 relative to what this mic hears right now. The floor follows quiet stretches down fast and up
+   * slowly; the ceiling jumps to peaks and decays ~2 dB/s. A fixed dB scale fails both ways: a hot mic pins every
+   * syllable at full height, a quiet one leaves speech as ticks. The gentle curve keeps loud and soft syllables apart.
+   */
+  const height = (db: number) => {
+    "worklet";
+    const f = floor.value > 0 ? db : floor.value;
+    floor.value = f + (db - f) * (db < f ? 0.5 : 0.005);
+    ceil.value = Math.max(db, ceil.value - 0.15, floor.value + MIN_SPAN);
+    const v = (db - floor.value - GATE) / (ceil.value - floor.value - GATE);
+    return Math.min(1, Math.max(0, v)) ** 1.3;
+  };
 
   const frame = useFrameCallback(({ timeSincePreviousFrame: dt }) => {
     if (dt == null) return;
-    // Fast attack, short release, frame-rate independent: smooth enough to drop buffer jitter, quick enough that
-    // neighbouring bars still differ like syllables do.
-    const k = 1 - Math.exp(-dt / (target.value > env.value ? 12 : 45));
-    env.value += (target.value - env.value) * k;
-    peak.value = Math.max(peak.value, env.value);
-    let p = phase.value + dt / SLOT_MS;
+    const { n, recent } = feed.value;
+    let behind = n - taken.value;
+    if (behind > QUEUE_MAX) {
+      taken.value = n - QUEUE_TARGET; // the JS thread stalled: skip ahead rather than lag behind the voice
+      behind = QUEUE_TARGET;
+    }
+    // The audio clock and the display clock drift apart: run slightly faster while levels pile up, slower when short.
+    const rate = 1 + Math.min(0.5, Math.max(-0.3, (behind - QUEUE_TARGET) * 0.15));
+    let p = phase.value + (dt / SLOT_MS) * rate;
     if (p >= 1) {
       p %= 1;
-      bars.value = [...bars.value.slice(1), shape(peak.value)];
-      peak.value = env.value;
+      const b = bars.value;
+      // Starved (a late buffer): let the last bar trail off rather than stall the scroll.
+      const next = behind > 0 ? height(recent[recent.length - behind]!) : b[b.length - 1]! * 0.5;
+      if (behind > 0) taken.value += 1;
+      bars.value = [...b.slice(1), next];
     }
     phase.value = p;
   }, false);
 
   useEffect(() => {
     if (recording) {
+      fedN.current = 0;
+      fedRecent.current = [];
+      feed.value = { n: 0, recent: [] };
       bars.value = Array(count).fill(0);
-      target.value = env.value = peak.value = phase.value = 0;
+      floor.value = 1;
+      ceil.value = -100;
+      phase.value = taken.value = 0;
     }
     frame.setActive(recording);
-  }, [recording, count, frame, bars, target, env, peak, phase]);
+  }, [recording, count, frame, feed, bars, floor, ceil, phase, taken]);
 
+  // Reads `bars` and `phase` here, not in a helper: an animated worklet only re-runs for shared values it reads itself.
   const barProps = useAnimatedProps(() => {
     const b = bars.value;
     const p = phase.value;

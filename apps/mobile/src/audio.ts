@@ -18,32 +18,40 @@ export interface AudioTransport {
 
 const TARGET_RATE = 24000;
 const CHUNK_MS = 5000;
-const LEVEL_MS = 50;
+/** One mic level per this much audio. The waveform draws one bar per level, so this also sets its scroll speed. */
+export const LEVEL_MS = 70;
 
-type LevelListener = (level: number) => void;
+type LevelListener = (db: number) => void;
 const levelListeners = new Set<LevelListener>();
 
-/** Mic loudness while recording, 0..1, about every 50 ms. Drives the waveform; kept out of the store on purpose. */
+/** Mic loudness while recording in dBFS (-100..0), one per LEVEL_MS of audio. Drives the waveform; kept out of the store on purpose. */
 export function onLevel(fn: LevelListener) {
   levelListeners.add(fn);
   return () => void levelListeners.delete(fn);
 }
 
-/** -50 dBFS (quiet room) maps to 0, full scale to 1. */
+/**
+ * Raw dBFS, no fixed scale: how loud speech arrives depends on the device and the audio session (an iPhone over
+ * `pcm-stream` sits around -70..-55 dBFS), so the waveform scales to what it hears.
+ */
 function emitLevel(db: number) {
-  const level = Math.min(1, Math.max(0, (db + 50) / 50));
+  const level = Math.max(-100, db);
   for (const fn of levelListeners) fn(level);
 }
 
-/** One level per ~50 ms slice of a PCM16 buffer. */
+/** The slice in progress. Carried across buffers so every level covers exactly LEVEL_MS, whatever the buffer size. */
+let sliceSum = 0;
+let sliceLen = 0;
+
+/** One level per LEVEL_MS slice of PCM16. */
 function emitPcmLevels(data: ArrayBuffer, sampleRate: number) {
   const pcm = new Int16Array(data, 0, data.byteLength >> 1);
   const step = Math.max(1, Math.round((sampleRate * LEVEL_MS) / 1000));
-  for (let i = 0; i < pcm.length; i += step) {
-    const end = Math.min(pcm.length, i + step);
-    let sum = 0;
-    for (let j = i; j < end; j++) sum += pcm[j]! * pcm[j]!;
-    const rms = Math.sqrt(sum / (end - i)) / 32768;
+  for (let i = 0; i < pcm.length; i++) {
+    sliceSum += pcm[i]! * pcm[i]!;
+    if (++sliceLen < step) continue;
+    const rms = Math.sqrt(sliceSum / sliceLen) / 32768;
+    sliceSum = sliceLen = 0;
     emitLevel(20 * Math.log10(rms || 1e-6));
   }
 }
@@ -71,6 +79,7 @@ function usePcmStream(): AudioTransport {
   return {
     async start() {
       await prepareMic();
+      sliceSum = sliceLen = 0;
       await stream.start();
     },
     async stop() {
